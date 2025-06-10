@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-type TunnelConfig struct {
+type ConfigFile struct {
 	FileName   string `json:"file_name"`
 	ConfigName string `json:"config_name"`
 	RemoteIP   string `json:"remote_ip"`
@@ -22,7 +22,7 @@ type TunnelConfig struct {
 
 var configPath = "config"
 
-func (c *TunnelConfig) SaveConfigFile() error {
+func (c *ConfigFile) SaveConfigFile() error {
 	fileName := fmt.Sprintf("%s/%d.json", configPath, time.Now().UnixMicro())
 	c.FileName = fileName
 	c.ConfigName = fmt.Sprintf("%s:%s", c.RemoteIP, c.RemotePort)
@@ -39,14 +39,14 @@ func (c *TunnelConfig) SaveConfigFile() error {
 	return nil
 }
 
-func (c *TunnelConfig) LoadConfigFile() ([]*TunnelConfig, error) {
+func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
 	files, err := os.ReadDir(configPath)
 	if err != nil {
 		log.Println("load config files error:", err.Error())
 		return nil, err
 	}
 
-	configs := make([]*TunnelConfig, 0)
+	configs := make([]*ConfigFile, 0)
 	for _, file := range files {
 		filePath := configPath + "/" + file.Name()
 		config, err := os.ReadFile(filePath)
@@ -55,7 +55,7 @@ func (c *TunnelConfig) LoadConfigFile() ([]*TunnelConfig, error) {
 			continue
 		}
 
-		conf := &TunnelConfig{}
+		conf := &ConfigFile{}
 		if err = json.Unmarshal(config, conf); err != nil {
 			log.Println("unmarshal config file error:", file.Name(), err.Error())
 			continue

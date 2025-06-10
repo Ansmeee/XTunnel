@@ -29,10 +29,18 @@ func main() {
 	app.Main()
 }
 
+type TunnelItem struct {
+	Config *service.ConfigFile
+	Switch widget.Bool
+	Click  widget.Clickable
+	Tunnel *service.Tunnel
+}
+
 func run(window *app.Window) error {
 	th := material.NewTheme()
 	var ops op.Ops
 
+	var configNameInput widget.Editor
 	var hostInput widget.Editor
 	var portInput widget.Editor
 	var sshHostInput widget.Editor
@@ -41,22 +49,34 @@ func run(window *app.Window) error {
 	var passwordInput widget.Editor
 	var submitBtn widget.Clickable
 
+	var createBtn widget.Clickable
+
 	var listState = &widget.List{
 		List: layout.List{
 			Axis: layout.Vertical,
 		},
 	}
 
-	cf := &service.TunnelConfig{}
+	cf := &service.ConfigFile{}
 	files, err := cf.LoadConfigFile()
 	if err != nil {
 		return err
 	}
 
-	switchs := make([]widget.Bool, len(files))
+	items := make([]*TunnelItem, len(files))
 	for i, file := range files {
-		fmt.Println(file.ConfigName)
-		switchs[i] = widget.Bool{Value: file.Switch}
+		items[i] = &TunnelItem{
+			Config: file,
+			Switch: widget.Bool{Value: false},
+			Click:  widget.Clickable{},
+			Tunnel: service.NewTunnel(&service.TunnelConfig{
+				Username:   file.UserName,
+				Password:   file.Password,
+				LocalAddr:  fmt.Sprintf("127.0.0.1:%s", file.RemotePort),
+				ServerAddr: fmt.Sprintf("%s:%s", file.SSHIp, file.SSHPort),
+				RemoteAddr: fmt.Sprintf("%s:%s", file.RemoteIP, file.RemotePort),
+			}),
+		}
 	}
 
 	for {
@@ -68,8 +88,6 @@ func run(window *app.Window) error {
 			gtx := app.NewContext(&ops, e)
 
 			if submitBtn.Clicked(gtx) {
-
-				fmt.Println("submitBtn clicked")
 				form := &submitForm{
 					HostIp:   hostInput.Text(),
 					Port:     portInput.Text(),
@@ -87,41 +105,68 @@ func run(window *app.Window) error {
 				Spacing: layout.SpaceStart,
 			}.Layout(gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					gtx.Constraints = layout.Exact(image.Pt(300, gtx.Constraints.Max.Y))
 					return layout.Inset{Top: unit.Dp(10), Left: unit.Dp(10), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								dims := material.Body1(th, "固定宽度内容").Layout(gtx)
-								return layout.Dimensions{
-									Size:     image.Pt(gtx.Dp(200), dims.Size.Y),
-									Baseline: dims.Baseline,
-								}
+								return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return material.Body1(th, "配置列表").Layout(gtx)
+									}),
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return createBtn.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											return material.Body1(th, "新增").Layout(gtx)
+										})
+									}),
+								)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 10}.Layout(gtx)
 							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								return material.List(th, listState).Layout(gtx, len(files), func(gtx layout.Context, index int) layout.Dimensions {
-									cfg := files[index]
+									item := items[index]
 
-									if switchs[index].Update(gtx) {
-										tunnel := service.Tunnel{
-											Username:   cfg.UserName,
-											Password:   cfg.Password,
-											LocalAddr:  fmt.Sprintf("127.0.0.1:%s", cfg.RemotePort),
-											ServerAddr: fmt.Sprintf("%s:%s", cfg.SSHIp, cfg.SSHPort),
-											RemoteAddr: fmt.Sprintf("%s:%s", cfg.RemoteIP, cfg.RemotePort),
-										}
-
-										if switchs[index].Value == true {
-											go tunnel.Start()
-										} else {
-											go tunnel.Stop()
-										}
+									if item.Click.Clicked(gtx) {
+										configNameInput.SetText(item.Config.ConfigName)
+										hostInput.SetText(item.Config.RemoteIP)
+										portInput.SetText(item.Config.RemotePort)
+										sshHostInput.SetText(item.Config.SSHIp)
+										sshPortInput.SetText(item.Config.SSHPort)
+										userNameInput.SetText(item.Config.UserName)
+										passwordInput.SetText(item.Config.Password)
 									}
 
-									return layout.Flex{Axis: layout.Horizontal}.Layout(gtx,
+									content := func(gtx layout.Context) layout.Dimensions {
+										return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Body1(th, item.Config.ConfigName).Layout(gtx)
+											}),
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												if item.Switch.Update(gtx) {
+													if item.Switch.Value == true {
+														go func() {
+															if err := item.Tunnel.Start(); err != nil {
+																log.Fatalf("隧道启动失败: %v", err)
+															}
+														}()
+													} else {
+														go func() {
+															item.Tunnel.Stop()
+														}()
+													}
+												}
+												return material.Switch(th, &item.Switch, "").Layout(gtx)
+											}),
+										)
+									}
+
+									return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return material.Body1(th, cfg.ConfigName).Layout(gtx)
+											return item.Click.Layout(gtx, content)
 										}),
 										layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-											return material.Switch(th, &switchs[index], "").Layout(gtx)
+											return layout.Spacer{Height: 10}.Layout(gtx)
 										}),
 									)
 								})
@@ -132,61 +177,100 @@ func run(window *app.Window) error {
 
 				// 右侧自适应部分
 				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions { // Flexed(1)表示占满剩余空间
-					return layout.Inset{Top: unit.Dp(10), Left: unit.Dp(10), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{Axis: layout.Vertical, Alignment: layout.Middle}.Layout(gtx,
+					return layout.Inset{Top: unit.Dp(10), Left: unit.Dp(10), Right: unit.Dp(10), Bottom: unit.Dp(20)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								t := material.Subtitle1(th, "隧道配置")
 								t.Alignment = text.Middle
 								return t.Layout(gtx)
 							}),
-
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 10}.Layout(gtx)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return material.Body1(th, "配置名称：").Layout(gtx)
+									}),
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										return material.Editor(th, &configNameInput, "请输入配置名称").Layout(gtx)
+									}),
+								)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 30}.Layout(gtx)
+							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								t := material.Subtitle1(th, "主机配置")
 								t.Alignment = text.Start
 								return t.Layout(gtx)
 							}),
-
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 10}.Layout(gtx)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Body1(th, "主机IP：").Layout(gtx)
+										return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Body1(th, "主机IP：").Layout(gtx)
+											}),
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Editor(th, &hostInput, "请输入主机IP").Layout(gtx)
+											}),
+										)
 									}),
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Editor(th, &hostInput, "请输入主机IP").Layout(gtx)
-									}),
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Body1(th, "端口：").Layout(gtx)
-									}),
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Editor(th, &portInput, "请输入端口").Layout(gtx)
+										return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Body1(th, "端口：").Layout(gtx)
+											}),
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Editor(th, &portInput, "请输入端口").Layout(gtx)
+											}),
+										)
 									}),
 								)
 							}),
-
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 30}.Layout(gtx)
+							}),
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								t := material.Subtitle1(th, "SSH代理配置")
 								t.Alignment = text.Start
 								return t.Layout(gtx)
 							}),
-
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 10}.Layout(gtx)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Body1(th, "代理主机IP：").Layout(gtx)
+										return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Body1(th, "代理主机IP：").Layout(gtx)
+											}),
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Editor(th, &sshHostInput, "请输入代理主机IP").Layout(gtx)
+											}),
+										)
 									}),
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Editor(th, &sshHostInput, "请输入代理主机IP").Layout(gtx)
-									}),
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Body1(th, "端口：").Layout(gtx)
-									}),
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-										return material.Editor(th, &sshPortInput, "请输入端口").Layout(gtx)
+										return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Body1(th, "端口：").Layout(gtx)
+											}),
+											layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+												return material.Editor(th, &sshPortInput, "请输入端口").Layout(gtx)
+											}),
+										)
 									}),
 								)
 							}),
-
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 10}.Layout(gtx)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 										return material.Body1(th, "用户名：").Layout(gtx)
@@ -194,6 +278,13 @@ func run(window *app.Window) error {
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 										return material.Editor(th, &userNameInput, "请输入用户名").Layout(gtx)
 									}),
+								)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Spacer{Height: 10}.Layout(gtx)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
 									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 										return material.Body1(th, "密码：").Layout(gtx)
 									}),
@@ -203,10 +294,10 @@ func run(window *app.Window) error {
 								)
 							}),
 
-							layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								return layout.Inset{
 									Top:    20,
-									Bottom: 50,
+									Bottom: 20,
 									Left:   20,
 									Right:  20,
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -224,8 +315,8 @@ func run(window *app.Window) error {
 	}
 }
 
-func readConfigFiles() []*service.TunnelConfig {
-	cf := &service.TunnelConfig{}
+func readConfigFiles() []*service.ConfigFile {
+	cf := &service.ConfigFile{}
 	files, err := cf.LoadConfigFile()
 	if err != nil {
 		log.Fatal(err)
@@ -244,7 +335,7 @@ type submitForm struct {
 }
 
 func (f *submitForm) Save() {
-	config := service.TunnelConfig{
+	config := service.ConfigFile{
 		RemoteIP:   f.HostIp,
 		RemotePort: f.Port,
 		SSHIp:      f.SSHIp,
@@ -257,16 +348,4 @@ func (f *submitForm) Save() {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func (f *submitForm) Create() {
-	tunnel := &service.Tunnel{
-		Username:   f.UserName,
-		Password:   f.Password,
-		LocalAddr:  fmt.Sprintf("127.0.0.1:%s", f.Port),
-		RemoteAddr: fmt.Sprintf("%s:%s", f.HostIp, f.Port),
-		ServerAddr: fmt.Sprintf("%s:%s", f.SSHIp, f.SSHPort),
-	}
-
-	go tunnel.Start()
 }

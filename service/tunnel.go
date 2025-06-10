@@ -1,127 +1,216 @@
 package service
 
 import (
+	"context"
+	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
 
-type Tunnel struct {
+type TunnelConfig struct {
 	Username   string
 	Password   string
 	LocalAddr  string
 	ServerAddr string
 	RemoteAddr string
-	sshClient  *ssh.Client
-	Quit       chan struct{}
+}
+
+type Tunnel struct {
+	config    *TunnelConfig
+	quit      chan struct{}
+	sshClient *ssh.Client
+	wg        sync.WaitGroup
+}
+
+func NewTunnel(config *TunnelConfig) *Tunnel {
+	return &Tunnel{config: config, quit: make(chan struct{})}
 }
 
 func (t *Tunnel) Stop() {
-	t.Quit <- struct{}{}
-}
+	close(t.quit)
+	t.wg.Wait()
 
-func (t *Tunnel) Start() {
-	if err := t.connectSSH(); err != nil {
-		log.Println("ssh connect err:", err.Error())
-		return
+	if t.sshClient != nil {
+		if err := t.sshClient.Close(); err != nil {
+			log.Printf("ssh client close error: %s", err.Error())
+			return
+		}
 	}
 
-	listener, err := net.Listen("tcp", t.LocalAddr)
+	log.Println("tunnel stopped")
+}
+
+func (t *Tunnel) Start() error {
+	t.wg.Add(1)
+	defer t.wg.Done()
+
+	if err := t.connectSSH(); err != nil {
+		return err
+	}
+
+	listener, err := net.Listen("tcp", t.config.LocalAddr)
 	if err != nil {
-		log.Printf("Failed to listen: %s", err.Error())
-		return
+		log.Printf("failed to listen %s, err: %s", t.config.LocalAddr, err.Error())
+		return err
 	}
 	defer listener.Close()
 
-	log.Printf("SSH隧道已建立 %s → %s via %s", t.LocalAddr, t.RemoteAddr, t.ServerAddr)
+	log.Printf("ssh tunnel established successfully %s → %s via %s", t.config.LocalAddr, t.config.RemoteAddr, t.config.ServerAddr)
 
 	go t.handleSignals()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sem := make(chan struct{}, 10)
 	for {
 		select {
-		case <-t.Quit:
-			log.Println("ssh server stop")
-			return
+		case <-t.quit:
+			log.Println("ssh server stopped...")
+			cancel()
+			return nil
 		default:
-			log.Println("ssh server listening")
 			conn, err := listener.Accept()
 			if err != nil {
-				log.Printf("ssh server accept err:", err.Error())
+				log.Printf("ssh server accept err: %s", err.Error())
 				continue
 			}
-			log.Printf("接受来自 %s 的新连接", conn.RemoteAddr())
-			go t.forward(conn)
+
+			sem <- struct{}{}
+			go func(c net.Conn) {
+				defer func() { <-sem }()
+				t.forward(ctx, conn)
+			}(conn)
 		}
 	}
 }
 
-func (t *Tunnel) forward(localConn net.Conn) {
+func (t *Tunnel) forward(ctx context.Context, localConn net.Conn) {
+	t.wg.Add(1)
+	defer t.wg.Done()
 	defer localConn.Close()
 
-	log.Printf("尝试连接到目标: %s", t.RemoteAddr)
-	remoteConn, err := t.sshClient.Dial("tcp", t.RemoteAddr)
+	var err error
+	var remoteConn net.Conn
+
+	log.Printf("remote server connecting at %s...", t.config.RemoteAddr)
+
+	remoteConn, err = t.sshClient.Dial("tcp", t.config.RemoteAddr)
 	if err != nil {
-		log.Printf("remote server connect err:", err.Error())
+		log.Printf("ssh client dial error: %s", err.Error())
 		return
 	}
 	defer remoteConn.Close()
 
-	log.Printf("成功连接到目标: %s", t.RemoteAddr)
+	log.Printf("成功连接到目标: %s", t.config.RemoteAddr)
 
-	done := make(chan struct{}, 2)
+	buf := make([]byte, 32*1024)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		n, err := io.Copy(remoteConn, localConn)
+		defer wg.Done()
+		n, err := io.CopyBuffer(remoteConn, localConn, buf)
 		if err != nil {
-			log.Printf("remote server copy err:", err.Error())
+			log.Printf("local to remote server forwarding err: %s", err.Error())
 		}
-		log.Printf("本地→远程转发完成: 传输 %d 字节", n)
-		done <- struct{}{}
+		log.Printf("local to remote server forwarding completed, transmit %d bytes", n)
 	}()
 
+	wg.Add(1)
 	go func() {
-		n, err := io.Copy(localConn, remoteConn)
+		defer wg.Done()
+		n, err := io.CopyBuffer(localConn, remoteConn, buf)
 		if err != nil {
-			log.Printf("remote server copy err:", err.Error())
+			log.Printf("remote server to local forwarding err: %s", err.Error())
 		}
-		log.Printf("远程→本地转发完成: 传输 %d 字节", n)
-		done <- struct{}{}
+		log.Printf("remote server to local forwarding completed, transmit %d bytes", n)
 	}()
 
-	<-done
-
-	log.Printf("连接 %s ↔ %s 已完成", localConn.RemoteAddr(), t.RemoteAddr)
+	wg.Wait()
 }
 
 func (t *Tunnel) handleSignals() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
-	log.Println("收到终止信号，关闭隧道...")
-	close(t.Quit)
-	if t.sshClient != nil {
-		t.sshClient.Close()
-	}
-	os.Exit(0)
+	t.Stop()
 }
 
 func (t *Tunnel) connectSSH() error {
 	config := &ssh.ClientConfig{
-		User:            t.Username,
-		Auth:            []ssh.AuthMethod{ssh.Password(t.Password)},
+		User:            t.config.Username,
+		Auth:            []ssh.AuthMethod{ssh.Password(t.config.Password)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         30 * time.Second,
 	}
 
-	sshClient, err := ssh.Dial("tcp", t.ServerAddr, config)
+	var err error
+	var sshClient *ssh.Client
+
+	for i := 1; i <= 3; i++ {
+		sshClient, err = ssh.Dial("tcp", t.config.ServerAddr, config)
+		if err == nil {
+			break
+		}
+		log.Printf("ssh connect err: %s, [%d/3]rtetring...", err.Error(), i)
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
+		log.Printf("ssh connect err: %s", err.Error())
 		return err
 	}
 
+	// 增加保活和心跳检测机制
+	go t.keepAlive()
 	t.sshClient = sshClient
 	return nil
+}
+
+func (t *Tunnel) keepAlive() {
+	t.wg.Add(1)
+	defer t.wg.Done()
+
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	retryCount := 0
+	maxRetries := 5
+
+	for {
+		select {
+		case <-ticker.C:
+			_, _, err := t.sshClient.SendRequest(fmt.Sprintf("http://%s", t.config.LocalAddr), true, nil)
+			if err == nil {
+				retryCount = 0
+				continue
+			}
+
+			if retryCount > maxRetries {
+				log.Printf("ssh keep alive err: exceed the maximum number of retries")
+				t.Stop()
+				return
+			}
+
+			retryCount++
+			if err = t.connectSSH(); err != nil {
+				log.Printf("ssh reconnect err: %s", err.Error())
+				continue
+			}
+
+			retryCount = 0
+			log.Printf("ssh reconnect success")
+			return
+		case <-t.quit:
+			log.Println("ssh server stopped...")
+			return
+		}
+	}
 }
