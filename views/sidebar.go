@@ -1,0 +1,136 @@
+package views
+
+import (
+	"fmt"
+	"gioui.org/layout"
+	"gioui.org/unit"
+	"gioui.org/widget"
+	"gioui.org/widget/material"
+	"image"
+	"log"
+	"xtunnel/service"
+)
+
+type Sidebar struct {
+	window    *Window
+	items     []*sidebarItem
+	listState *widget.List
+	createBtn *widget.Clickable
+}
+
+type sidebarItem struct {
+	config       *service.ConfigFile
+	tunnel       *service.Tunnel
+	clickWidget  widget.Clickable
+	switchWidget widget.Bool
+}
+
+func (s *Sidebar) Register() {
+	// 1、load items
+	if err := s.LoadSidebarItems(); err != nil {
+		log.Panicf("loading sidebar items err: %s", err.Error())
+	}
+
+	s.createBtn = &widget.Clickable{}
+	s.listState = &widget.List{List: layout.List{Axis: layout.Vertical}}
+
+}
+
+func (s *Sidebar) LoadSidebarItems() error {
+	cf := &service.ConfigFile{}
+	files, err := cf.LoadConfigFile()
+	if err != nil {
+		log.Panicf("loading config file err: %s", err.Error())
+		return err
+	}
+
+	items := make([]*sidebarItem, 0, len(files))
+	for _, file := range files {
+		items = append(items, &sidebarItem{
+			config:       file,
+			switchWidget: widget.Bool{Value: false},
+			clickWidget:  widget.Clickable{},
+			tunnel: service.NewTunnel(&service.TunnelConfig{
+				Username:   file.UserName,
+				Password:   file.Password,
+				LocalAddr:  fmt.Sprintf("127.0.0.1:%s", file.RemotePort),
+				ServerAddr: fmt.Sprintf("%s:%s", file.SSHIp, file.SSHPort),
+				RemoteAddr: fmt.Sprintf("%s:%s", file.RemoteIP, file.RemotePort),
+			}),
+		})
+	}
+
+	s.items = items
+	return nil
+}
+
+func (s *Sidebar) Layout() layout.Dimensions {
+	s.Register() // 注册需要用到的组件
+
+	th := s.window.th
+	gtx := s.window.gtx
+
+	gtx.Constraints = layout.Exact(image.Pt(300, gtx.Constraints.Max.Y))
+	return layout.Inset{Top: unit.Dp(10), Left: unit.Dp(10), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return material.Body1(th, "配置列表").Layout(gtx)
+					}),
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return s.createBtn.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return material.Body1(th, "新增").Layout(gtx)
+						})
+					}),
+				)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Spacer{Height: 10}.Layout(gtx)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+
+				return material.List(th, s.listState).Layout(gtx, len(s.items), func(gtx layout.Context, index int) layout.Dimensions {
+					item := s.items[index]
+
+					if item.clickWidget.Clicked(gtx) {
+						
+					}
+
+					content := func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return material.Body1(th, item.config.ConfigName).Layout(gtx)
+							}),
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								if item.switchWidget.Update(gtx) {
+									if item.switchWidget.Value == true {
+										go func() {
+											if err := item.tunnel.Start(); err != nil {
+												log.Fatalf("隧道启动失败: %v", err)
+											}
+										}()
+									} else {
+										go func() {
+											item.tunnel.Stop()
+										}()
+									}
+								}
+								return material.Switch(th, &item.switchWidget, "").Layout(gtx)
+							}),
+						)
+					}
+
+					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return item.clickWidget.Layout(gtx, content)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return layout.Spacer{Height: 10}.Layout(gtx)
+						}),
+					)
+				})
+			}),
+		)
+	})
+}
