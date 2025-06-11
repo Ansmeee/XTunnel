@@ -7,10 +7,15 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"image"
+	"xtunnel/service"
 )
+
+const ModeCreate = 1
+const ModeEdit = 2
 
 type Editor struct {
 	window          *Window
+	mode            int
 	configNameInput widget.Editor
 	remoteIpInput   widget.Editor
 	remotePortInput widget.Editor
@@ -21,20 +26,21 @@ type Editor struct {
 	saveButton      widget.Clickable
 }
 
-func (e *Editor) Register() {
-	e.saveButton = widget.Clickable{}
-	e.configNameInput = widget.Editor{}
-	e.remoteIpInput = widget.Editor{}
-	e.remotePortInput = widget.Editor{}
-	e.serverIpInput = widget.Editor{}
-	e.serverPortInput = widget.Editor{}
-	e.usernameInput = widget.Editor{}
-	e.passwordInput = widget.Editor{}
+func NewEditor(w *Window) *Editor {
+	return &Editor{
+		window:          w,
+		configNameInput: widget.Editor{},
+		remoteIpInput:   widget.Editor{},
+		remotePortInput: widget.Editor{},
+		serverIpInput:   widget.Editor{},
+		serverPortInput: widget.Editor{},
+		usernameInput:   widget.Editor{},
+		passwordInput:   widget.Editor{},
+		saveButton:      widget.Clickable{},
+	}
 }
 
 func (e *Editor) Layout() layout.Dimensions {
-	e.Register()
-
 	th := e.window.th
 	gtx := e.window.gtx
 
@@ -169,4 +175,43 @@ func (e *Editor) Layout() layout.Dimensions {
 			}),
 		)
 	})
+}
+
+func (e *Editor) SwitchCreateMode() {
+	if !e.IsCreateMode() {
+		e.mode = ModeCreate
+		e.setCurItem()
+	}
+}
+
+func (e *Editor) SwitchEditMode() {
+	e.mode = ModeEdit
+	e.setCurItem()
+}
+
+func (e *Editor) setCurItem() {
+	config := &service.ConfigFile{}
+	if e.IsEditMode() {
+		curItem := e.window.ui.sidebar.SelectedItem
+		if curItem == nil {
+			return
+		}
+		config = curItem.config
+	}
+
+	e.configNameInput.SetText(config.ConfigName)
+	e.remoteIpInput.SetText(config.RemoteIP)
+	e.remotePortInput.SetText(config.RemotePort)
+	e.serverIpInput.SetText(config.RemoteIP)
+	e.serverPortInput.SetText(config.RemotePort)
+	e.usernameInput.SetText(config.UserName)
+	e.passwordInput.SetText(config.Password)
+}
+
+func (e *Editor) IsCreateMode() bool {
+	return e.mode == ModeCreate
+}
+
+func (e *Editor) IsEditMode() bool {
+	return e.mode == ModeEdit
 }

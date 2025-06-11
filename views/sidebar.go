@@ -12,28 +12,18 @@ import (
 )
 
 type Sidebar struct {
-	window    *Window
-	items     []*sidebarItem
-	listState *widget.List
-	createBtn *widget.Clickable
+	SelectedItem *SidebarItem
+	window       *Window
+	items        []*SidebarItem
+	listState    *widget.List
+	createBtn    *widget.Clickable
 }
 
-type sidebarItem struct {
+type SidebarItem struct {
 	config       *service.ConfigFile
 	tunnel       *service.Tunnel
 	clickWidget  widget.Clickable
 	switchWidget widget.Bool
-}
-
-func (s *Sidebar) Register() {
-	// 1、load items
-	if err := s.LoadSidebarItems(); err != nil {
-		log.Panicf("loading sidebar items err: %s", err.Error())
-	}
-
-	s.createBtn = &widget.Clickable{}
-	s.listState = &widget.List{List: layout.List{Axis: layout.Vertical}}
-
 }
 
 func (s *Sidebar) LoadSidebarItems() error {
@@ -44,9 +34,9 @@ func (s *Sidebar) LoadSidebarItems() error {
 		return err
 	}
 
-	items := make([]*sidebarItem, 0, len(files))
-	for _, file := range files {
-		items = append(items, &sidebarItem{
+	items := make([]*SidebarItem, len(files))
+	for i, file := range files {
+		items[i] = &SidebarItem{
 			config:       file,
 			switchWidget: widget.Bool{Value: false},
 			clickWidget:  widget.Clickable{},
@@ -57,16 +47,28 @@ func (s *Sidebar) LoadSidebarItems() error {
 				ServerAddr: fmt.Sprintf("%s:%s", file.SSHIp, file.SSHPort),
 				RemoteAddr: fmt.Sprintf("%s:%s", file.RemoteIP, file.RemotePort),
 			}),
-		})
+		}
 	}
 
 	s.items = items
 	return nil
 }
 
-func (s *Sidebar) Layout() layout.Dimensions {
-	s.Register() // 注册需要用到的组件
+func NewSidebar(w *Window) *Sidebar {
+	sidebar := &Sidebar{
+		window:    w,
+		createBtn: &widget.Clickable{},
+		listState: &widget.List{List: layout.List{Axis: layout.Vertical}},
+	}
 
+	if err := sidebar.LoadSidebarItems(); err != nil {
+		log.Printf("LoadSidebarItems err: %s", err.Error())
+	}
+
+	return sidebar
+}
+
+func (s *Sidebar) Layout() layout.Dimensions {
 	th := s.window.th
 	gtx := s.window.gtx
 
@@ -79,6 +81,10 @@ func (s *Sidebar) Layout() layout.Dimensions {
 						return material.Body1(th, "配置列表").Layout(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						if s.createBtn.Clicked(gtx) {
+							s.SelectedItem = nil
+							s.window.ui.editor.SwitchCreateMode()
+						}
 						return s.createBtn.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							return material.Body1(th, "新增").Layout(gtx)
 						})
@@ -94,7 +100,8 @@ func (s *Sidebar) Layout() layout.Dimensions {
 					item := s.items[index]
 
 					if item.clickWidget.Clicked(gtx) {
-						
+						s.SelectedItem = item
+						s.window.ui.editor.SwitchEditMode()
 					}
 
 					content := func(gtx layout.Context) layout.Dimensions {

@@ -17,7 +17,6 @@ type ConfigFile struct {
 	SSHPort    string `json:"ssh_port"`
 	UserName   string `json:"user_name"`
 	Password   string `json:"password"`
-	Switch     bool   `json:"switch"`
 }
 
 var configPath = "config"
