@@ -12,11 +12,12 @@ import (
 )
 
 type Sidebar struct {
-	SelectedItem *SidebarItem
-	window       *Window
-	items        []*SidebarItem
-	listState    *widget.List
-	createBtn    *widget.Clickable
+	SelectedItem  *SidebarItem
+	window        *Window
+	items         []*SidebarItem
+	tunnelManager *service.TunnelManager
+	listState     *widget.List
+	createBtn     *widget.Clickable
 }
 
 type SidebarItem struct {
@@ -34,23 +35,34 @@ func (s *Sidebar) LoadSidebarItems() error {
 		return err
 	}
 
+	tunnelManager := service.NewTunnelManager()
 	items := make([]*SidebarItem, len(files))
 	for i, file := range files {
-		items[i] = &SidebarItem{
-			config:       file,
-			switchWidget: widget.Bool{Value: false},
-			clickWidget:  widget.Clickable{},
-			tunnel: service.NewTunnel(&service.TunnelConfig{
+		_, err := tunnelManager.AddTunnel(
+			file.ConfigName,
+			&service.TunnelConfig{
 				Username:   file.UserName,
 				Password:   file.Password,
 				LocalAddr:  fmt.Sprintf("127.0.0.1:%s", file.RemotePort),
 				ServerAddr: fmt.Sprintf("%s:%s", file.SSHIp, file.SSHPort),
 				RemoteAddr: fmt.Sprintf("%s:%s", file.RemoteIP, file.RemotePort),
-			}),
+			},
+		)
+
+		if err != nil {
+			log.Printf("add tunnel err: %s", err.Error())
+			continue
+		}
+
+		items[i] = &SidebarItem{
+			config:       file,
+			switchWidget: widget.Bool{Value: false},
+			clickWidget:  widget.Clickable{},
 		}
 	}
 
 	s.items = items
+	s.tunnelManager = tunnelManager
 	return nil
 }
 
@@ -112,15 +124,13 @@ func (s *Sidebar) Layout() layout.Dimensions {
 							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 								if item.switchWidget.Update(gtx) {
 									if item.switchWidget.Value == true {
-										go func() {
-											if err := item.tunnel.Start(); err != nil {
-												log.Fatalf("隧道启动失败: %v", err)
-											}
-										}()
+										if err := s.tunnelManager.StartTunnel(item.config.ConfigName); err != nil {
+											log.Printf("start tunnel err: %s", err.Error())
+										}
 									} else {
-										go func() {
-											item.tunnel.Stop()
-										}()
+										if err := s.tunnelManager.StopTunnel(item.config.ConfigName); err != nil {
+											log.Printf("stop tunnel err: %s", err.Error())
+										}
 									}
 								}
 								return material.Switch(th, &item.switchWidget, "").Layout(gtx)
