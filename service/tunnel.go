@@ -35,8 +35,6 @@ func NewTunnel(config *TunnelConfig) *Tunnel {
 
 func (t *Tunnel) Stop() {
 	close(t.quit)
-	t.wg.Wait()
-
 	if t.sshClient != nil {
 		if err := t.sshClient.Close(); err != nil {
 			log.Printf("ssh client close error: %s", err.Error())
@@ -48,9 +46,6 @@ func (t *Tunnel) Stop() {
 }
 
 func (t *Tunnel) Start() error {
-	t.wg.Add(1)
-	defer t.wg.Done()
-
 	if err := t.connectSSH(); err != nil {
 		return err
 	}
@@ -93,8 +88,6 @@ func (t *Tunnel) Start() error {
 }
 
 func (t *Tunnel) forward(ctx context.Context, localConn net.Conn) {
-	t.wg.Add(1)
-	defer t.wg.Done()
 	defer localConn.Close()
 
 	var err error
@@ -175,9 +168,6 @@ func (t *Tunnel) connectSSH() error {
 }
 
 func (t *Tunnel) keepAlive() {
-	t.wg.Add(1)
-	defer t.wg.Done()
-
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
