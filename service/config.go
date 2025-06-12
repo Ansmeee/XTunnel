@@ -21,28 +21,85 @@ type ConfigFile struct {
 
 var configPath = "config"
 
-func (c *ConfigFile) SaveConfigFile() error {
-	fileName := fmt.Sprintf("%s/%d.json", configPath, time.Now().UnixMicro())
-	c.FileName = fileName
-	c.ConfigName = fmt.Sprintf("%s:%s", c.RemoteIP, c.RemotePort)
-	fileContent, err := json.Marshal(c)
+func (c *ConfigFile) DeleteConfigFile() error {
+	fileName := c.FileName
+	if fileName == "" {
+		return fmt.Errorf("invalid config file")
+	}
+
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		log.Printf("[%s] config file not exists", fileName)
+		return fmt.Errorf("config file not exists")
+	}
+
+	if err := os.Remove(fileName); err != nil {
+		log.Printf("[%s] config file delete error: %s", fileName, err.Error())
+		return fmt.Errorf("config file delete error")
+	}
+	
+	return nil
+}
+
+func (c *ConfigFile) UpdateConfigFile() error {
+	fileName := c.FileName
+	if fileName == "" {
+		return fmt.Errorf("invalid config file")
+	}
+
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		log.Printf("[%s] config file not exists", fileName)
+		return fmt.Errorf("config file not exists")
+	}
+
+	file, err := os.OpenFile(fileName, os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("[%s] config file open error: %s", fileName, err.Error())
+		return fmt.Errorf("config file open error")
+	}
+	defer file.Close()
+
+	newContent, err := json.Marshal(c)
 	if err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(fileName, fileContent, 0644); err != nil {
+	_, err = file.Write(newContent)
+	if err != nil {
+		log.Printf("[%s] config file write error: %s", fileName, err.Error())
+		return fmt.Errorf("config file write error")
+	}
+
+	log.Printf("[%s] config file updated", fileName)
+	return nil
+}
+
+func (c *ConfigFile) SaveConfigFile() error {
+	fileName := fmt.Sprintf("%s/%d.json", configPath, time.Now().UnixMicro())
+	c.FileName = fileName
+	if c.ConfigName == "" {
+		c.ConfigName = fmt.Sprintf("%s:%s", c.RemoteIP, c.RemotePort)
+	}
+
+	fileContent, err := json.Marshal(c)
+	if err != nil {
+		log.Printf("[%s] config file marshal error: %s", fileName, err.Error())
 		return err
 	}
 
-	log.Printf("save config file success: %s", fileName)
+	if err := os.WriteFile(fileName, fileContent, 0644); err != nil {
+		log.Printf("[%s] config file write error: %s", fileName, err.Error())
+		return fmt.Errorf("config file write error")
+	}
+
+	log.Printf("[%s] config file saved", fileName)
 	return nil
 }
 
 func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
 	files, err := os.ReadDir(configPath)
 	if err != nil {
-		log.Println("load config files error:", err.Error())
-		return nil, err
+		log.Printf("load config files error: %s", err.Error())
+		return nil, fmt.Errorf("load config files error")
 	}
 
 	configs := make([]*ConfigFile, 0)
@@ -50,13 +107,13 @@ func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
 		filePath := configPath + "/" + file.Name()
 		config, err := os.ReadFile(filePath)
 		if err != nil {
-			log.Println("read config file error:", file.Name(), err.Error())
+			log.Printf("[%s] read config file error: %s", file.Name(), err.Error())
 			continue
 		}
 
 		conf := &ConfigFile{}
 		if err = json.Unmarshal(config, conf); err != nil {
-			log.Println("unmarshal config file error:", file.Name(), err.Error())
+			log.Printf("[%s] unmarshal config file error: %s", file.Name(), err.Error())
 			continue
 		}
 		configs = append(configs, conf)

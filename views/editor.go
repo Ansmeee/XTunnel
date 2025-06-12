@@ -7,6 +7,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"image"
+	"log"
 	"xtunnel/service"
 )
 
@@ -16,6 +17,7 @@ const ModeEdit = 2
 type Editor struct {
 	window          *Window
 	mode            int
+	fileName        string
 	configNameInput widget.Editor
 	remoteIpInput   widget.Editor
 	remotePortInput widget.Editor
@@ -24,6 +26,7 @@ type Editor struct {
 	usernameInput   widget.Editor
 	passwordInput   widget.Editor
 	saveButton      widget.Clickable
+	deleteButton    widget.Clickable
 }
 
 func NewEditor(w *Window) *Editor {
@@ -37,6 +40,7 @@ func NewEditor(w *Window) *Editor {
 		usernameInput:   widget.Editor{},
 		passwordInput:   widget.Editor{},
 		saveButton:      widget.Clickable{},
+		deleteButton:    widget.Clickable{},
 	}
 }
 
@@ -163,18 +167,89 @@ func (e *Editor) Layout() layout.Dimensions {
 			}),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Inset{
-					Top:    20,
-					Bottom: 20,
-					Left:   0,
-					Right:  0,
-				}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					btn := material.Button(th, &e.saveButton, "保存")
-					return btn.Layout(gtx)
+				return layout.Inset{Top: 20, Bottom: 20, Left: 50, Right: 50}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceAround}.Layout(gtx,
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							if e.saveButton.Clicked(gtx) {
+								e.OnSaveBtnClicked()
+							}
+							btn := material.Button(th, &e.saveButton, "保存")
+							return btn.Layout(gtx)
+						}),
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							if e.IsEditMode() {
+								if e.deleteButton.Clicked(gtx) {
+									e.OnDelBtnClicked()
+								}
+								btn := material.Button(th, &e.deleteButton, "删除")
+								return btn.Layout(gtx)
+							}
+							return layout.Dimensions{}
+						}),
+					)
 				})
 			}),
 		)
 	})
+}
+
+func (e *Editor) OnSaveBtnClicked() {
+	if err := e.validateForm(); err != nil {
+		log.Printf("form validation error: %s", err)
+		return
+	}
+
+	cf := &service.ConfigFile{
+		ConfigName: e.configNameInput.Text(),
+		RemoteIP:   e.remoteIpInput.Text(),
+		RemotePort: e.remotePortInput.Text(),
+		SSHIp:      e.serverIpInput.Text(),
+		SSHPort:    e.serverPortInput.Text(),
+		UserName:   e.usernameInput.Text(),
+		Password:   e.passwordInput.Text(),
+	}
+
+	var err error
+
+	if e.IsEditMode() {
+		cf.FileName = e.fileName
+		err = cf.UpdateConfigFile()
+	} else {
+		err = cf.SaveConfigFile()
+	}
+
+	if err != nil {
+		log.Printf("save config error: %s", err)
+		return
+	}
+
+	if err := e.window.ui.sidebar.LoadSidebarItems(); err != nil {
+		log.Printf("load sidebar error: %s", err)
+		return
+	}
+
+	e.SwitchEditMode()
+}
+
+func (e *Editor) OnDelBtnClicked() {
+	cf := &service.ConfigFile{
+		FileName: e.fileName,
+	}
+
+	if err := cf.DeleteConfigFile(); err != nil {
+		log.Printf("delete config error: %s", err.Error())
+		return
+	}
+
+	if err := e.window.ui.sidebar.LoadSidebarItems(); err != nil {
+		log.Printf("load sidebar error: %s", err)
+	}
+
+	e.SwitchCreateMode()
+}
+
+func (e *Editor) validateForm() error {
+	return nil
 }
 
 func (e *Editor) SwitchCreateMode() {
@@ -197,6 +272,7 @@ func (e *Editor) setCurItem() {
 			return
 		}
 		config = curItem.config
+		e.fileName = config.FileName
 	}
 
 	e.configNameInput.SetText(config.ConfigName)
