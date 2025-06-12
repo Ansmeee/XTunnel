@@ -13,8 +13,8 @@ type ConfigFile struct {
 	ConfigName string `json:"config_name"`
 	RemoteIP   string `json:"remote_ip"`
 	RemotePort string `json:"remote_port"`
-	SSHIp      string `json:"ssh_ip"`
-	SSHPort    string `json:"ssh_port"`
+	ServerIP   string `json:"server_ip"`
+	ServerPort string `json:"server_port"`
 	UserName   string `json:"user_name"`
 	Password   string `json:"password"`
 }

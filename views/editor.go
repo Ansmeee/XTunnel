@@ -203,8 +203,8 @@ func (e *Editor) OnSaveBtnClicked() {
 		ConfigName: e.configNameInput.Text(),
 		RemoteIP:   e.remoteIpInput.Text(),
 		RemotePort: e.remotePortInput.Text(),
-		SSHIp:      e.serverIpInput.Text(),
-		SSHPort:    e.serverPortInput.Text(),
+		ServerIP:   e.serverIpInput.Text(),
+		ServerPort: e.serverPortInput.Text(),
 		UserName:   e.usernameInput.Text(),
 		Password:   e.passwordInput.Text(),
 	}

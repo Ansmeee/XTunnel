@@ -44,7 +44,7 @@ func (s *Sidebar) LoadSidebarItems() error {
 				Username:   file.UserName,
 				Password:   file.Password,
 				LocalAddr:  fmt.Sprintf("127.0.0.1:%s", file.RemotePort),
-				ServerAddr: fmt.Sprintf("%s:%s", file.SSHIp, file.SSHPort),
+				ServerAddr: fmt.Sprintf("%s:%s", file.ServerIP, file.ServerPort),
 				RemoteAddr: fmt.Sprintf("%s:%s", file.RemoteIP, file.RemotePort),
 			},
 		)
