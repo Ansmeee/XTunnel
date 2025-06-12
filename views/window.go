@@ -24,14 +24,17 @@ type UI struct {
 func NewWindow() *Window {
 	window := new(app.Window)
 	window.Option(app.Title("XTunnel"))
-	window.Option(app.Size(unit.Dp(900), unit.Dp(500)))
+	window.Option(app.MaxSize(unit.Dp(900), unit.Dp(500)))
+	window.Option(app.MinSize(unit.Dp(900), unit.Dp(500)))
+	th := material.NewTheme()
+	th.TextSize = unit.Sp(14)
 	w := &Window{
 		window: window,
-		th:     material.NewTheme(),
+		th:     th,
 		ops:    &op.Ops{},
 		ui:     &UI{},
 	}
-	
+
 	w.RegisterUI()
 	return w
 }
@@ -49,11 +52,11 @@ func (w *Window) Run() {
 				return
 			case app.FrameEvent:
 				w.gtx = app.NewContext(w.ops, e)
-				layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceStart}.Layout(w.gtx,
+				layout.Flex{Axis: layout.Horizontal}.Layout(w.gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return w.ui.sidebar.Layout()
 					}),
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 						return w.ui.editor.Layout()
 					}),
 				)

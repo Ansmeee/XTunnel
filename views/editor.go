@@ -7,6 +7,7 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"image"
+	"image/color"
 	"log"
 	"xtunnel/service"
 )
@@ -45,7 +46,7 @@ func NewEditor(w *Window) *Editor {
 	if w.ui.sidebar.SelectedItem != nil {
 		editor.SwitchEditMode()
 	}
-	
+
 	return editor
 }
 
@@ -65,20 +66,33 @@ func (e *Editor) Layout() layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Body1(th, "配置名称：").Layout(gtx)
-					}),
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Editor(th, &e.configNameInput, "请输入配置名称").Layout(gtx)
-					}),
-				)
+				t := material.Body1(th, "基本配置")
+				t.TextSize = unit.Sp(12)
+				t.Alignment = text.Start
+				return t.Layout(gtx)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Spacer{Height: 10}.Layout(gtx)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				input := &Input{
+					gtx:        gtx,
+					th:         th,
+					e:          e,
+					label:      "配置名称：",
+					labelWidth: 80,
+					hint:       "请输入配置名称",
+					editor:     &e.configNameInput,
+					width:      gtx.Constraints.Max.X,
+				}
+				return input.Layout()
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Spacer{Height: 30}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				t := material.Subtitle1(th, "主机配置")
+				t.TextSize = unit.Sp(12)
 				t.Alignment = text.Start
 				return t.Layout(gtx)
 			}),
@@ -88,24 +102,32 @@ func (e *Editor) Layout() layout.Dimensions {
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Body1(th, "主机IP：").Layout(gtx)
-							}),
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Editor(th, &e.remoteIpInput, "请输入主机IP").Layout(gtx)
-							}),
-						)
+						input := &Input{
+							gtx:        gtx,
+							th:         th,
+							e:          e,
+							label:      "主机IP：",
+							labelWidth: 80,
+							hint:       "请输入主机IP",
+							editor:     &e.remoteIpInput,
+							width:      380,
+						}
+
+						return input.Layout()
 					}),
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Body1(th, "端口：").Layout(gtx)
-							}),
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Editor(th, &e.remotePortInput, "请输入端口").Layout(gtx)
-							}),
-						)
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						input := &Input{
+							gtx:        gtx,
+							th:         th,
+							e:          e,
+							label:      "端口：",
+							labelWidth: 60,
+							hint:       "请输入主机端口",
+							editor:     &e.remotePortInput,
+							width:      200,
+						}
+
+						return input.Layout()
 					}),
 				)
 			}),
@@ -115,6 +137,7 @@ func (e *Editor) Layout() layout.Dimensions {
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				t := material.Subtitle1(th, "SSH代理配置")
 				t.Alignment = text.Start
+				t.TextSize = unit.Sp(12)
 				return t.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -123,52 +146,67 @@ func (e *Editor) Layout() layout.Dimensions {
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Body1(th, "代理主机IP：").Layout(gtx)
-							}),
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Editor(th, &e.serverIpInput, "请输入代理主机IP").Layout(gtx)
-							}),
-						)
+						input := &Input{
+							gtx:        gtx,
+							th:         th,
+							e:          e,
+							label:      "主机IP：",
+							labelWidth: 80,
+							hint:       "请输入主机IP",
+							editor:     &e.serverIpInput,
+							width:      380,
+						}
+
+						return input.Layout()
 					}),
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Body1(th, "端口：").Layout(gtx)
-							}),
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Editor(th, &e.serverPortInput, "请输入端口").Layout(gtx)
-							}),
-						)
+					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+						input := &Input{
+							gtx:        gtx,
+							th:         th,
+							e:          e,
+							label:      "端口：",
+							labelWidth: 60,
+							hint:       "请输入主机端口",
+							editor:     &e.serverPortInput,
+							width:      200,
+						}
+
+						return input.Layout()
 					}),
 				)
+
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Body1(th, "用户名：").Layout(gtx)
-					}),
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Editor(th, &e.usernameInput, "请输入用户名").Layout(gtx)
-					}),
-				)
+				input := &Input{
+					gtx:        gtx,
+					th:         th,
+					e:          e,
+					label:      "用户名：",
+					labelWidth: 80,
+					hint:       "请输入用户名",
+					editor:     &e.usernameInput,
+					width:      gtx.Constraints.Max.X,
+				}
+				return input.Layout()
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Body1(th, "密码：").Layout(gtx)
-					}),
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Editor(th, &e.passwordInput, "请输入密码").Layout(gtx)
-					}),
-				)
+				input := &Input{
+					gtx:        gtx,
+					th:         th,
+					e:          e,
+					label:      "密码：",
+					labelWidth: 80,
+					hint:       "请输入密码",
+					editor:     &e.passwordInput,
+					width:      gtx.Constraints.Max.X,
+				}
+				return input.Layout()
 			}),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -179,6 +217,7 @@ func (e *Editor) Layout() layout.Dimensions {
 								e.OnSaveBtnClicked()
 							}
 							btn := material.Button(th, &e.saveButton, "保存")
+							btn.Inset = layout.Inset{Top: 10, Bottom: 10, Left: 20, Right: 20}
 							return btn.Layout(gtx)
 						}),
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -187,6 +226,8 @@ func (e *Editor) Layout() layout.Dimensions {
 									e.OnDelBtnClicked()
 								}
 								btn := material.Button(th, &e.deleteButton, "删除")
+								btn.Background = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+								btn.Inset = layout.Inset{Top: 8, Bottom: 8, Left: 20, Right: 20}
 								return btn.Layout(gtx)
 							}
 							return layout.Dimensions{}
@@ -196,6 +237,46 @@ func (e *Editor) Layout() layout.Dimensions {
 			}),
 		)
 	})
+}
+
+type Input struct {
+	gtx        layout.Context
+	th         *material.Theme
+	e          *Editor
+	label      string
+	labelWidth int
+	hint       string
+	editor     *widget.Editor
+	width      int
+}
+
+func (e *Input) Layout() layout.Dimensions {
+	gtx := e.gtx
+	th := e.th
+
+	gtx.Constraints = layout.Exact(image.Pt(e.width, 30))
+	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			gtx.Constraints = layout.Exact(image.Pt(e.labelWidth, 30))
+			return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return material.Body1(th, e.label).Layout(gtx)
+			})
+		}),
+		layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
+		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			border := widget.Border{
+				Color:        color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
+				Width:        unit.Dp(1),
+				CornerRadius: unit.Dp(4),
+			}
+			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+					e := material.Editor(th, e.editor, e.hint)
+					return e.Layout(gtx)
+				})
+			})
+		}),
+	)
 }
 
 func (e *Editor) OnSaveBtnClicked() {
