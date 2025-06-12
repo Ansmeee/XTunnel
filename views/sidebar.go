@@ -63,6 +63,11 @@ func (s *Sidebar) LoadSidebarItems() error {
 
 	s.items = items
 	s.tunnelManager = tunnelManager
+
+	if len(items) > 0 {
+		s.SelectedItem = items[0]
+	}
+
 	return nil
 }
 

@@ -43,6 +43,7 @@ type Tunnel struct {
 	mu         sync.RWMutex
 	ctx        context.Context
 	cancel     context.CancelFunc
+	startedAt  time.Time
 }
 
 func NewTunnel(config *TunnelConfig) *Tunnel {
@@ -77,6 +78,7 @@ func (t *Tunnel) Start() error {
 	}
 
 	t.status = StatusRunning
+	t.startedAt = time.Now()
 	log.Printf("[%s] ssh tunnel established %s → %s via %s", t.identifier, t.config.LocalAddr, t.config.RemoteAddr, t.config.ServerAddr)
 
 	go t.handleSignals()

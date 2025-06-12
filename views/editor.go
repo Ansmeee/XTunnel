@@ -30,7 +30,7 @@ type Editor struct {
 }
 
 func NewEditor(w *Window) *Editor {
-	return &Editor{
+	editor := &Editor{
 		window:          w,
 		configNameInput: widget.Editor{},
 		remoteIpInput:   widget.Editor{},
@@ -42,6 +42,11 @@ func NewEditor(w *Window) *Editor {
 		saveButton:      widget.Clickable{},
 		deleteButton:    widget.Clickable{},
 	}
+	if w.ui.sidebar.SelectedItem != nil {
+		editor.SwitchEditMode()
+	}
+	
+	return editor
 }
 
 func (e *Editor) Layout() layout.Dimensions {
