@@ -36,7 +36,7 @@ func (c *ConfigFile) DeleteConfigFile() error {
 		log.Printf("[%s] config file delete error: %s", fileName, err.Error())
 		return fmt.Errorf("config file delete error")
 	}
-	
+
 	return nil
 }
 
@@ -74,6 +74,10 @@ func (c *ConfigFile) UpdateConfigFile() error {
 }
 
 func (c *ConfigFile) SaveConfigFile() error {
+	if err := c.EnsureDir(); err != nil {
+		return err
+	}
+
 	fileName := fmt.Sprintf("%s/%d.json", configPath, time.Now().UnixMicro())
 	c.FileName = fileName
 	if c.ConfigName == "" {
@@ -96,13 +100,18 @@ func (c *ConfigFile) SaveConfigFile() error {
 }
 
 func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
+	configs := make([]*ConfigFile, 0)
+
+	if err := c.EnsureDir(); err != nil {
+		return configs, nil
+	}
+
 	files, err := os.ReadDir(configPath)
 	if err != nil {
 		log.Printf("load config files error: %s", err.Error())
 		return nil, fmt.Errorf("load config files error")
 	}
 
-	configs := make([]*ConfigFile, 0)
 	for _, file := range files {
 		filePath := configPath + "/" + file.Name()
 		config, err := os.ReadFile(filePath)
@@ -120,4 +129,21 @@ func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
 	}
 
 	return configs, nil
+}
+
+func (c *ConfigFile) EnsureDir() error {
+	if _, err := os.Stat(configPath); err != nil {
+		if os.IsNotExist(err) {
+			if err := os.Mkdir(configPath, 0644); err != nil {
+				log.Printf("[%s] config file mkdir error: %s", configPath, err.Error())
+				return fmt.Errorf("config file mkdir error")
+			}
+			return nil
+		}
+
+		fmt.Printf("[%s] config dir not ready", configPath)
+		return fmt.Errorf("config dir not ready")
+	}
+
+	return nil
 }
