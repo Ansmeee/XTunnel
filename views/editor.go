@@ -211,24 +211,38 @@ func (e *Editor) Layout() layout.Dimensions {
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Inset{Top: 20, Bottom: 20, Left: 50, Right: 50}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceAround}.Layout(gtx,
+					return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceSides}.Layout(gtx,
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							if e.saveButton.Clicked(gtx) {
-								e.OnSaveBtnClicked()
-							}
-							btn := material.Button(th, &e.saveButton, "保存")
-							btn.Inset = layout.Inset{Top: 10, Bottom: 10, Left: 20, Right: 20}
-							return btn.Layout(gtx)
+							return layout.Inset{
+								Top:    20,
+								Bottom: 20,
+								Left:   50,
+								Right:  50,
+							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+								if e.saveButton.Clicked(gtx) {
+									e.OnSaveBtnClicked()
+								}
+								btn := material.Button(th, &e.saveButton, "保存")
+								btn.Inset = layout.Inset{Top: 10, Bottom: 10, Left: 20, Right: 20}
+								return btn.Layout(gtx)
+							})
 						}),
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							if e.IsEditMode() {
-								if e.deleteButton.Clicked(gtx) {
-									e.OnDelBtnClicked()
-								}
-								btn := material.Button(th, &e.deleteButton, "删除")
-								btn.Background = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
-								btn.Inset = layout.Inset{Top: 8, Bottom: 8, Left: 20, Right: 20}
-								return btn.Layout(gtx)
+								return layout.Inset{
+									Top:    20,
+									Bottom: 20,
+									Left:   50,
+									Right:  50,
+								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+									if e.deleteButton.Clicked(gtx) {
+										e.OnDelBtnClicked()
+									}
+									btn := material.Button(th, &e.deleteButton, "删除")
+									btn.Background = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+									btn.Inset = layout.Inset{Top: 8, Bottom: 8, Left: 20, Right: 20}
+									return btn.Layout(gtx)
+								})
 							}
 							return layout.Dimensions{}
 						}),
