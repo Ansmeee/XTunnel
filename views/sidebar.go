@@ -123,7 +123,11 @@ func (s *Sidebar) Layout() layout.Dimensions {
 						s.window.ui.editor.SwitchEditMode()
 					}
 
-					if item.clickWidget.Hovered() {
+					if s.SelectedItem.config.ConfigName == item.config.ConfigName {
+						bg = color.NRGBA{R: 222, G: 184, B: 135, A: 255}
+					}
+
+					if s.SelectedItem.config.ConfigName != item.config.ConfigName && item.clickWidget.Hovered() {
 						bg = color.NRGBA{R: 255, G: 228, B: 181, A: 255}
 					}
 
