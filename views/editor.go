@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"strings"
 	"xtunnel/service"
 )
 
@@ -19,6 +20,8 @@ type Editor struct {
 	window          *Window
 	mode            int
 	fileName        string
+	originPassword  string
+	passwordChanged bool
 	configNameInput widget.Editor
 	remoteIpInput   widget.Editor
 	remotePortInput widget.Editor
@@ -54,8 +57,8 @@ func (e *Editor) Layout() layout.Dimensions {
 	th := e.window.th
 	gtx := e.window.gtx
 
-	gtx.Constraints = layout.Exact(image.Pt(600, gtx.Constraints.Max.Y))
-	return layout.Inset{Top: unit.Dp(10), Left: unit.Dp(10), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	gtx.Constraints = layout.Exact(image.Pt(560, gtx.Constraints.Max.Y))
+	return layout.Inset{Left: unit.Dp(10), Right: unit.Dp(20)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				t := material.Subtitle1(th, "隧道配置")
@@ -110,7 +113,7 @@ func (e *Editor) Layout() layout.Dimensions {
 							labelWidth: 80,
 							hint:       "请输入主机IP",
 							editor:     &e.remoteIpInput,
-							width:      380,
+							width:      340,
 						}
 
 						return input.Layout()
@@ -124,7 +127,7 @@ func (e *Editor) Layout() layout.Dimensions {
 							labelWidth: 60,
 							hint:       "请输入主机端口",
 							editor:     &e.remotePortInput,
-							width:      200,
+							width:      190,
 						}
 
 						return input.Layout()
@@ -154,7 +157,7 @@ func (e *Editor) Layout() layout.Dimensions {
 							labelWidth: 80,
 							hint:       "请输入主机IP",
 							editor:     &e.serverIpInput,
-							width:      380,
+							width:      340,
 						}
 
 						return input.Layout()
@@ -168,7 +171,7 @@ func (e *Editor) Layout() layout.Dimensions {
 							labelWidth: 60,
 							hint:       "请输入主机端口",
 							editor:     &e.serverPortInput,
-							width:      200,
+							width:      190,
 						}
 
 						return input.Layout()
@@ -196,6 +199,10 @@ func (e *Editor) Layout() layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				if _, c := e.passwordInput.Update(gtx); c {
+					e.passwordChanged = e.passwordInput.Text() != e.originPassword
+				}
+
 				input := &Input{
 					gtx:        gtx,
 					th:         th,
@@ -299,6 +306,11 @@ func (e *Editor) OnSaveBtnClicked() {
 		return
 	}
 
+	password := e.originPassword
+	if e.passwordChanged {
+		password = e.passwordInput.Text()
+	}
+
 	cf := &service.ConfigFile{
 		ConfigName: e.configNameInput.Text(),
 		RemoteIP:   e.remoteIpInput.Text(),
@@ -306,7 +318,7 @@ func (e *Editor) OnSaveBtnClicked() {
 		ServerIP:   e.serverIpInput.Text(),
 		ServerPort: e.serverPortInput.Text(),
 		UserName:   e.usernameInput.Text(),
-		Password:   e.passwordInput.Text(),
+		Password:   password,
 	}
 
 	var err error
@@ -379,9 +391,10 @@ func (e *Editor) setCurItem() {
 	e.remoteIpInput.SetText(config.RemoteIP)
 	e.remotePortInput.SetText(config.RemotePort)
 	e.serverIpInput.SetText(config.RemoteIP)
-	e.serverPortInput.SetText(config.RemotePort)
+	e.serverPortInput.SetText(config.ServerPort)
 	e.usernameInput.SetText(config.UserName)
-	e.passwordInput.SetText(config.Password)
+	e.originPassword = config.Password
+	e.passwordInput.SetText(strings.Repeat("*", 10))
 }
 
 func (e *Editor) IsCreateMode() bool {

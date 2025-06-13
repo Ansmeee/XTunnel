@@ -3,10 +3,12 @@ package views
 import (
 	"fmt"
 	"gioui.org/layout"
+	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"image"
+	"image/color"
 	"log"
 	"xtunnel/service"
 )
@@ -90,7 +92,7 @@ func (s *Sidebar) Layout() layout.Dimensions {
 	gtx := s.window.gtx
 
 	gtx.Constraints = layout.Exact(image.Pt(300, gtx.Constraints.Max.Y))
-	return layout.Inset{Top: unit.Dp(10), Left: unit.Dp(10), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	return layout.Inset{Left: unit.Dp(20), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
@@ -112,45 +114,55 @@ func (s *Sidebar) Layout() layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-
 				return material.List(th, s.listState).Layout(gtx, len(s.items), func(gtx layout.Context, index int) layout.Dimensions {
 					item := s.items[index]
 
+					bg := color.NRGBA{R: 240, G: 240, B: 240, A: 255}
 					if item.clickWidget.Clicked(gtx) {
 						s.SelectedItem = item
 						s.window.ui.editor.SwitchEditMode()
 					}
 
+					if item.clickWidget.Hovered() {
+						bg = color.NRGBA{R: 255, G: 228, B: 181, A: 255}
+					}
+
 					content := func(gtx layout.Context) layout.Dimensions {
-						return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return material.Body1(th, item.config.ConfigName).Layout(gtx)
+						return layout.Stack{}.Layout(gtx,
+							layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+								paint.Fill(gtx.Ops, bg)
+								return layout.Dimensions{Size: gtx.Constraints.Min}
 							}),
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								if item.switchWidget.Update(gtx) {
-									if item.switchWidget.Value == true {
-										if err := s.tunnelManager.StartTunnel(item.config.ConfigName); err != nil {
-											log.Printf("start tunnel err: %s", err.Error())
+							layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceAround}.Layout(gtx,
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+										gtx.Constraints = layout.Exact(image.Pt(210, 30))
+										return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											return material.Body1(th, item.config.ConfigName).Layout(gtx)
+										})
+									}),
+									layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+										if item.switchWidget.Update(gtx) {
+											if item.switchWidget.Value == true {
+												if err := s.tunnelManager.StartTunnel(item.config.ConfigName); err != nil {
+													log.Printf("start tunnel err: %s", err.Error())
+												}
+											} else {
+												if err := s.tunnelManager.StopTunnel(item.config.ConfigName); err != nil {
+													log.Printf("stop tunnel err: %s", err.Error())
+												}
+											}
 										}
-									} else {
-										if err := s.tunnelManager.StopTunnel(item.config.ConfigName); err != nil {
-											log.Printf("stop tunnel err: %s", err.Error())
-										}
-									}
-								}
-								return material.Switch(th, &item.switchWidget, "").Layout(gtx)
+										return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+											return material.Switch(th, &item.switchWidget, "").Layout(gtx)
+										})
+									}),
+								)
 							}),
 						)
 					}
 
-					return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return item.clickWidget.Layout(gtx, content)
-						}),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return layout.Spacer{Height: 10}.Layout(gtx)
-						}),
-					)
+					return item.clickWidget.Layout(gtx, content)
 				})
 			}),
 		)

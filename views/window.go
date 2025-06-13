@@ -4,8 +4,10 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
+	"image/color"
 )
 
 type Window struct {
@@ -52,12 +54,22 @@ func (w *Window) Run() {
 				return
 			case app.FrameEvent:
 				w.gtx = app.NewContext(w.ops, e)
-				layout.Flex{Axis: layout.Horizontal}.Layout(w.gtx,
-					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return w.ui.sidebar.Layout()
+				layout.Stack{}.Layout(w.gtx,
+					layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+						paint.Fill(gtx.Ops, color.NRGBA{R: 240, G: 240, B: 240, A: 255})
+						return layout.Dimensions{Size: gtx.Constraints.Min}
 					}),
-					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						return w.ui.editor.Layout()
+					layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+						return layout.Inset{Top: 20, Bottom: 20, Left: 20, Right: 20}.Layout(w.gtx, func(gtx layout.Context) layout.Dimensions {
+							return layout.Flex{Axis: layout.Horizontal}.Layout(w.gtx,
+								layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+									return w.ui.sidebar.Layout()
+								}),
+								layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+									return w.ui.editor.Layout()
+								}),
+							)
+						})
 					}),
 				)
 				e.Frame(w.gtx.Ops)
