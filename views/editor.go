@@ -32,6 +32,33 @@ type Editor struct {
 	passwordInput   widget.Editor
 	saveButton      widget.Clickable
 	deleteButton    widget.Clickable
+
+	configNameInputWidget *InputWidget
+	remoteIpInputWidget   *InputWidget
+	remotePortInputWidget *InputWidget
+	serverIpInputWidget   *InputWidget
+	serverPortInputWidget *InputWidget
+	usernameInputWidget   *InputWidget
+	passwordInputWidget   *InputWidget
+}
+
+type InputWidget struct {
+	Input    *Input
+	Editor   widget.Editor
+	ValidErr string
+}
+
+type Input struct {
+	gtx         layout.Context
+	th          *material.Theme
+	e           *Editor
+	label       string
+	labelWidth  int
+	hint        string
+	hintColor   color.NRGBA
+	editor      *widget.Editor
+	width       int
+	borderColor color.NRGBA
 }
 
 func NewEditor(w *Window) *Editor {
@@ -46,6 +73,35 @@ func NewEditor(w *Window) *Editor {
 		passwordInput:   widget.Editor{},
 		saveButton:      widget.Clickable{},
 		deleteButton:    widget.Clickable{},
+
+		configNameInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
+		remoteIpInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
+		remotePortInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
+		serverIpInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
+		serverPortInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
+		usernameInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
+		passwordInputWidget: &InputWidget{
+			Input:  &Input{},
+			Editor: widget.Editor{},
+		},
 	}
 	if w.ui.sidebar.SelectedItem != nil {
 		editor.SwitchEditMode()
@@ -79,18 +135,20 @@ func (e *Editor) Layout() layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				input := &Input{
+				e.configNameInputWidget.Input = &Input{
 					gtx:         gtx,
 					th:          th,
 					e:           e,
 					label:       "配置名称：",
 					labelWidth:  80,
 					hint:        "请输入配置名称",
+					hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 					editor:      &e.configNameInput,
 					width:       gtx.Constraints.Max.X,
 					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
-				return input.Layout()
+
+				return e.configNameInputWidget.Input.Layout()
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Spacer{Height: 30}.Layout(gtx)
@@ -107,34 +165,46 @@ func (e *Editor) Layout() layout.Dimensions {
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						input := &Input{
+						e.remoteIpInputWidget.Input = &Input{
 							gtx:         gtx,
 							th:          th,
 							e:           e,
 							label:       "主机IP：",
 							labelWidth:  80,
 							hint:        "请输入主机IP",
+							hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 							editor:      &e.remoteIpInput,
 							width:       340,
 							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
-						return input.Layout()
+						if e.remoteIpInputWidget.ValidErr != "" {
+							e.remoteIpInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+							e.remoteIpInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+						}
+
+						return e.remoteIpInputWidget.Input.Layout()
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						input := &Input{
+						e.remotePortInputWidget.Input = &Input{
 							gtx:         gtx,
 							th:          th,
 							e:           e,
 							label:       "端口：",
 							labelWidth:  60,
 							hint:        "请输入主机端口",
+							hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 							editor:      &e.remotePortInput,
 							width:       190,
 							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
-						return input.Layout()
+						if e.remotePortInputWidget.ValidErr != "" {
+							e.remotePortInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+							e.remotePortInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+						}
+
+						return e.remotePortInputWidget.Input.Layout()
 					}),
 				)
 			}),
@@ -153,34 +223,46 @@ func (e *Editor) Layout() layout.Dimensions {
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						input := &Input{
+						e.serverIpInputWidget.Input = &Input{
 							gtx:         gtx,
 							th:          th,
 							e:           e,
 							label:       "主机IP：",
 							labelWidth:  80,
 							hint:        "请输入主机IP",
+							hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 							editor:      &e.serverIpInput,
 							width:       340,
 							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
-						return input.Layout()
+						if e.serverIpInputWidget.ValidErr != "" {
+							e.serverIpInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+							e.serverIpInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+						}
+
+						return e.serverIpInputWidget.Input.Layout()
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-						input := &Input{
+						e.serverPortInputWidget.Input = &Input{
 							gtx:         gtx,
 							th:          th,
 							e:           e,
 							label:       "端口：",
 							labelWidth:  60,
 							hint:        "请输入主机端口",
+							hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 							editor:      &e.serverPortInput,
 							width:       190,
 							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
-						return input.Layout()
+						if e.serverPortInputWidget.ValidErr != "" {
+							e.serverPortInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+							e.serverPortInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+						}
+
+						return e.serverPortInputWidget.Input.Layout()
 					}),
 				)
 
@@ -189,18 +271,25 @@ func (e *Editor) Layout() layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				input := &Input{
+				e.usernameInputWidget.Input = &Input{
 					gtx:         gtx,
 					th:          th,
 					e:           e,
 					label:       "用户名：",
 					labelWidth:  80,
 					hint:        "请输入用户名",
+					hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 					editor:      &e.usernameInput,
 					width:       gtx.Constraints.Max.X,
 					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
-				return input.Layout()
+
+				if e.usernameInputWidget.ValidErr != "" {
+					e.usernameInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+					e.usernameInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+				}
+
+				return e.usernameInputWidget.Input.Layout()
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Spacer{Height: 10}.Layout(gtx)
@@ -210,18 +299,23 @@ func (e *Editor) Layout() layout.Dimensions {
 					e.passwordChanged = e.passwordInput.Text() != e.originPassword
 				}
 
-				input := &Input{
+				e.passwordInputWidget.Input = &Input{
 					gtx:         gtx,
 					th:          th,
 					e:           e,
 					label:       "密码：",
 					labelWidth:  80,
 					hint:        "请输入密码",
+					hintColor:   color.NRGBA{R: 169, G: 169, B: 169, A: 255},
 					editor:      &e.passwordInput,
 					width:       gtx.Constraints.Max.X,
 					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
-				return input.Layout()
+				if e.passwordInputWidget.ValidErr != "" {
+					e.passwordInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+					e.passwordInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+				}
+				return e.passwordInputWidget.Input.Layout()
 			}),
 
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -268,18 +362,6 @@ func (e *Editor) Layout() layout.Dimensions {
 	})
 }
 
-type Input struct {
-	gtx         layout.Context
-	th          *material.Theme
-	e           *Editor
-	label       string
-	labelWidth  int
-	hint        string
-	editor      *widget.Editor
-	width       int
-	borderColor color.NRGBA
-}
-
 func (e *Input) Layout() layout.Dimensions {
 	gtx := e.gtx
 	th := e.th
@@ -301,8 +383,9 @@ func (e *Input) Layout() layout.Dimensions {
 			}
 			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					e := material.Editor(th, e.editor, e.hint)
-					return e.Layout(gtx)
+					editor := material.Editor(th, e.editor, e.hint)
+					editor.HintColor = e.hintColor
+					return editor.Layout(gtx)
 				})
 			})
 		}),
@@ -370,23 +453,44 @@ func (e *Editor) OnDelBtnClicked() {
 }
 
 func (e *Editor) validateForm() error {
+	hasErr := false
+	e.remoteIpInputWidget.ValidErr = ""
 	if e.remoteIpInput.Text() == "" {
-		return fmt.Errorf("remote ip is empty")
+		e.remoteIpInputWidget.ValidErr = "remote ip is empty"
+		hasErr = true
 	}
+
+	e.remotePortInputWidget.ValidErr = ""
 	if e.remotePortInput.Text() == "" {
-		return fmt.Errorf("remote port is empty")
+		e.remotePortInputWidget.ValidErr = "remote port is empty"
+		hasErr = true
 	}
+
+	e.serverIpInputWidget.ValidErr = ""
 	if e.serverIpInput.Text() == "" {
-		return fmt.Errorf("server ip is empty")
+		e.serverIpInputWidget.ValidErr = "server ip is empty"
+		hasErr = true
 	}
+	e.serverPortInputWidget.ValidErr = ""
 	if e.serverPortInput.Text() == "" {
-		return fmt.Errorf("server port is empty")
+		e.serverPortInputWidget.ValidErr = "server port is empty"
+		hasErr = true
 	}
+
+	e.usernameInputWidget.ValidErr = ""
 	if e.usernameInput.Text() == "" {
-		return fmt.Errorf("username is empty")
+		e.usernameInputWidget.ValidErr = "username is empty"
+		hasErr = true
 	}
+
+	e.passwordInputWidget.ValidErr = ""
 	if e.passwordInput.Text() == "" {
-		return fmt.Errorf("password is empty")
+		e.passwordInputWidget.ValidErr = "password is empty"
+		hasErr = true
+	}
+
+	if hasErr {
+		return fmt.Errorf("form validation error")
 	}
 
 	return nil
