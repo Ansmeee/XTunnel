@@ -1,6 +1,7 @@
 package views
 
 import (
+	"fmt"
 	"gioui.org/layout"
 	"gioui.org/text"
 	"gioui.org/unit"
@@ -79,14 +80,15 @@ func (e *Editor) Layout() layout.Dimensions {
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				input := &Input{
-					gtx:        gtx,
-					th:         th,
-					e:          e,
-					label:      "配置名称：",
-					labelWidth: 80,
-					hint:       "请输入配置名称",
-					editor:     &e.configNameInput,
-					width:      gtx.Constraints.Max.X,
+					gtx:         gtx,
+					th:          th,
+					e:           e,
+					label:       "配置名称：",
+					labelWidth:  80,
+					hint:        "请输入配置名称",
+					editor:      &e.configNameInput,
+					width:       gtx.Constraints.Max.X,
+					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
 				return input.Layout()
 			}),
@@ -106,28 +108,30 @@ func (e *Editor) Layout() layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						input := &Input{
-							gtx:        gtx,
-							th:         th,
-							e:          e,
-							label:      "主机IP：",
-							labelWidth: 80,
-							hint:       "请输入主机IP",
-							editor:     &e.remoteIpInput,
-							width:      340,
+							gtx:         gtx,
+							th:          th,
+							e:           e,
+							label:       "主机IP：",
+							labelWidth:  80,
+							hint:        "请输入主机IP",
+							editor:      &e.remoteIpInput,
+							width:       340,
+							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
 						return input.Layout()
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 						input := &Input{
-							gtx:        gtx,
-							th:         th,
-							e:          e,
-							label:      "端口：",
-							labelWidth: 60,
-							hint:       "请输入主机端口",
-							editor:     &e.remotePortInput,
-							width:      190,
+							gtx:         gtx,
+							th:          th,
+							e:           e,
+							label:       "端口：",
+							labelWidth:  60,
+							hint:        "请输入主机端口",
+							editor:      &e.remotePortInput,
+							width:       190,
+							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
 						return input.Layout()
@@ -150,28 +154,30 @@ func (e *Editor) Layout() layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						input := &Input{
-							gtx:        gtx,
-							th:         th,
-							e:          e,
-							label:      "主机IP：",
-							labelWidth: 80,
-							hint:       "请输入主机IP",
-							editor:     &e.serverIpInput,
-							width:      340,
+							gtx:         gtx,
+							th:          th,
+							e:           e,
+							label:       "主机IP：",
+							labelWidth:  80,
+							hint:        "请输入主机IP",
+							editor:      &e.serverIpInput,
+							width:       340,
+							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
 						return input.Layout()
 					}),
 					layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 						input := &Input{
-							gtx:        gtx,
-							th:         th,
-							e:          e,
-							label:      "端口：",
-							labelWidth: 60,
-							hint:       "请输入主机端口",
-							editor:     &e.serverPortInput,
-							width:      190,
+							gtx:         gtx,
+							th:          th,
+							e:           e,
+							label:       "端口：",
+							labelWidth:  60,
+							hint:        "请输入主机端口",
+							editor:      &e.serverPortInput,
+							width:       190,
+							borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 						}
 
 						return input.Layout()
@@ -184,14 +190,15 @@ func (e *Editor) Layout() layout.Dimensions {
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				input := &Input{
-					gtx:        gtx,
-					th:         th,
-					e:          e,
-					label:      "用户名：",
-					labelWidth: 80,
-					hint:       "请输入用户名",
-					editor:     &e.usernameInput,
-					width:      gtx.Constraints.Max.X,
+					gtx:         gtx,
+					th:          th,
+					e:           e,
+					label:       "用户名：",
+					labelWidth:  80,
+					hint:        "请输入用户名",
+					editor:      &e.usernameInput,
+					width:       gtx.Constraints.Max.X,
+					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
 				return input.Layout()
 			}),
@@ -204,14 +211,15 @@ func (e *Editor) Layout() layout.Dimensions {
 				}
 
 				input := &Input{
-					gtx:        gtx,
-					th:         th,
-					e:          e,
-					label:      "密码：",
-					labelWidth: 80,
-					hint:       "请输入密码",
-					editor:     &e.passwordInput,
-					width:      gtx.Constraints.Max.X,
+					gtx:         gtx,
+					th:          th,
+					e:           e,
+					label:       "密码：",
+					labelWidth:  80,
+					hint:        "请输入密码",
+					editor:      &e.passwordInput,
+					width:       gtx.Constraints.Max.X,
+					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
 				return input.Layout()
 			}),
@@ -261,14 +269,15 @@ func (e *Editor) Layout() layout.Dimensions {
 }
 
 type Input struct {
-	gtx        layout.Context
-	th         *material.Theme
-	e          *Editor
-	label      string
-	labelWidth int
-	hint       string
-	editor     *widget.Editor
-	width      int
+	gtx         layout.Context
+	th          *material.Theme
+	e           *Editor
+	label       string
+	labelWidth  int
+	hint        string
+	editor      *widget.Editor
+	width       int
+	borderColor color.NRGBA
 }
 
 func (e *Input) Layout() layout.Dimensions {
@@ -286,7 +295,7 @@ func (e *Input) Layout() layout.Dimensions {
 		layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			border := widget.Border{
-				Color:        color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
+				Color:        e.borderColor,
 				Width:        unit.Dp(1),
 				CornerRadius: unit.Dp(4),
 			}
@@ -361,6 +370,25 @@ func (e *Editor) OnDelBtnClicked() {
 }
 
 func (e *Editor) validateForm() error {
+	if e.remoteIpInput.Text() == "" {
+		return fmt.Errorf("remote ip is empty")
+	}
+	if e.remotePortInput.Text() == "" {
+		return fmt.Errorf("remote port is empty")
+	}
+	if e.serverIpInput.Text() == "" {
+		return fmt.Errorf("server ip is empty")
+	}
+	if e.serverPortInput.Text() == "" {
+		return fmt.Errorf("server port is empty")
+	}
+	if e.usernameInput.Text() == "" {
+		return fmt.Errorf("username is empty")
+	}
+	if e.passwordInput.Text() == "" {
+		return fmt.Errorf("password is empty")
+	}
+
 	return nil
 }
 
@@ -390,7 +418,7 @@ func (e *Editor) setCurItem() {
 	e.configNameInput.SetText(config.ConfigName)
 	e.remoteIpInput.SetText(config.RemoteIP)
 	e.remotePortInput.SetText(config.RemotePort)
-	e.serverIpInput.SetText(config.RemoteIP)
+	e.serverIpInput.SetText(config.ServerIP)
 	e.serverPortInput.SetText(config.ServerPort)
 	e.usernameInput.SetText(config.UserName)
 	e.originPassword = config.Password
