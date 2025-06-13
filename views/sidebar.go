@@ -124,11 +124,11 @@ func (s *Sidebar) Layout() layout.Dimensions {
 					}
 
 					if s.SelectedItem.config.ConfigName == item.config.ConfigName {
-						bg = color.NRGBA{R: 222, G: 184, B: 135, A: 255}
+						bg = color.NRGBA{R: 192, G: 192, B: 192, A: 255}
 					}
 
 					if s.SelectedItem.config.ConfigName != item.config.ConfigName && item.clickWidget.Hovered() {
-						bg = color.NRGBA{R: 255, G: 228, B: 181, A: 255}
+						bg = color.NRGBA{R: 220, G: 220, B: 220, A: 255}
 					}
 
 					content := func(gtx layout.Context) layout.Dimensions {
