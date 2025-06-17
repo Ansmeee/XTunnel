@@ -119,7 +119,7 @@ func (t *Tunnel) Stop() {
 	t.mu.Lock()
 	t.status = StatusStopped
 	t.mu.Unlock()
-	log.Printf("tunnel stopped: %s", t.identifier)
+	log.Printf("[%s] tunnel stopped", t.identifier)
 }
 
 func (t *Tunnel) runTunnel() {

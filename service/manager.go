@@ -57,10 +57,16 @@ func (tm *TunnelManager) StopTunnel(identifier string) error {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
 	tunnel, ok := tm.tunnels[identifier]
-
 	if !ok {
 		return fmt.Errorf("[%s] tunnel not exists", identifier)
 	}
+	tm.tunnels[identifier] = NewTunnel(&TunnelConfig{
+		Username:   tunnel.config.Username,
+		Password:   tunnel.config.Password,
+		LocalAddr:  tunnel.config.LocalAddr,
+		ServerAddr: tunnel.config.ServerAddr,
+		RemoteAddr: tunnel.config.RemoteAddr,
+	})
 
 	tunnel.Stop()
 	return nil
