@@ -341,6 +341,7 @@ func (e *Editor) Layout() layout.Dimensions {
 								}
 								btn := material.Button(th, &e.saveButton, "保存")
 								btn.Inset = layout.Inset{Top: 6, Bottom: 6, Left: 10, Right: 10}
+								btn.Background = color.NRGBA{R: 0, G: 122, B: 255, A: 255}
 								return btn.Layout(gtx)
 							})
 						}),

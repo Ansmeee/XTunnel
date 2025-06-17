@@ -112,6 +112,7 @@ func (s *Sidebar) Layout() layout.Dimensions {
 							}
 							btn := material.Button(th, s.createBtn, "新增")
 							btn.Inset = layout.Inset{Top: 2, Bottom: 2, Left: 10, Right: 10}
+							btn.Background = color.NRGBA{R: 0, G: 122, B: 255, A: 255}
 							return btn.Layout(gtx)
 						})
 					}),
@@ -168,7 +169,7 @@ func (s *Sidebar) Layout() layout.Dimensions {
 										}
 										return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 											sw := material.Switch(th, &item.switchWidget, "")
-											sw.Color.Enabled = color.NRGBA{R: 0, G: 128, B: 0, A: 255}
+											sw.Color.Enabled = color.NRGBA{R: 0, G: 122, B: 255, A: 255}
 											return sw.Layout(gtx)
 										})
 									}),
