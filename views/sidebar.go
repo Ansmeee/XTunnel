@@ -92,7 +92,7 @@ func (s *Sidebar) Layout() layout.Dimensions {
 	gtx := s.window.gtx
 
 	gtx.Constraints = layout.Exact(image.Pt(300, gtx.Constraints.Max.Y))
-	return layout.Inset{Left: unit.Dp(20), Right: unit.Dp(10)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	return layout.Inset{Left: unit.Dp(20), Right: unit.Dp(10), Bottom: unit.Dp(40)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceBetween}.Layout(gtx,

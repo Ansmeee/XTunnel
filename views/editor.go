@@ -148,6 +148,12 @@ func (e *Editor) Layout() layout.Dimensions {
 					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
 
+				if e.configNameInputWidget.ValidErr != "" {
+					e.configNameInputWidget.Input.hint = e.configNameInputWidget.ValidErr
+					e.configNameInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+					e.configNameInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
+				}
+
 				return e.configNameInputWidget.Input.Layout()
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -454,6 +460,22 @@ func (e *Editor) OnDelBtnClicked() {
 
 func (e *Editor) validateForm() error {
 	hasErr := false
+
+	e.configNameInputWidget.ValidErr = ""
+	if e.configNameInput.Text() == "" {
+		e.configNameInputWidget.ValidErr = "config name is empty"
+		hasErr = true
+	}
+
+	for _, item := range e.window.ui.sidebar.items {
+		if item.config.ConfigName == e.configNameInput.Text() {
+			e.configNameInput.SetText("")
+			e.configNameInputWidget.ValidErr = "config name cannot be duplicated"
+			hasErr = true
+			break
+		}
+	}
+
 	e.remoteIpInputWidget.ValidErr = ""
 	if e.remoteIpInput.Text() == "" {
 		e.remoteIpInputWidget.ValidErr = "remote ip is empty"
