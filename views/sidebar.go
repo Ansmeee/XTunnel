@@ -1,6 +1,7 @@
 package views
 
 import (
+	"context"
 	"fmt"
 	"gioui.org/layout"
 	"gioui.org/op/paint"
@@ -29,9 +30,9 @@ type SidebarItem struct {
 	switchWidget widget.Bool
 }
 
-func (s *Sidebar) LoadSidebarItems() error {
+func (s *Sidebar) LoadSidebarItems(ctx context.Context) error {
 	cf := &service.ConfigFile{}
-	files, err := cf.LoadConfigFile()
+	files, err := cf.LoadConfigFile(ctx)
 	if err != nil {
 		log.Panicf("loading config file err: %s", err.Error())
 		return err
@@ -41,6 +42,7 @@ func (s *Sidebar) LoadSidebarItems() error {
 	items := make([]*SidebarItem, len(files))
 	for i, file := range files {
 		_, err := tunnelManager.AddTunnel(
+			ctx,
 			file.Identifier,
 			&service.TunnelConfig{
 				Username:   file.UserName,
@@ -80,7 +82,7 @@ func NewSidebar(w *Window) *Sidebar {
 		listState: &widget.List{List: layout.List{Axis: layout.Vertical}},
 	}
 
-	if err := sidebar.LoadSidebarItems(); err != nil {
+	if err := sidebar.LoadSidebarItems(w.ctx); err != nil {
 		log.Printf("LoadSidebarItems err: %s", err.Error())
 	}
 
@@ -158,11 +160,11 @@ func (s *Sidebar) Layout() layout.Dimensions {
 									layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 										if item.switchWidget.Update(gtx) {
 											if item.switchWidget.Value == true {
-												if err := s.tunnelManager.StartTunnel(item.config.Identifier); err != nil {
+												if err := s.tunnelManager.StartTunnel(s.window.ctx, item.config.Identifier); err != nil {
 													log.Printf("start tunnel err: %s", err.Error())
 												}
 											} else {
-												if err := s.tunnelManager.StopTunnel(item.config.Identifier); err != nil {
+												if err := s.tunnelManager.StopTunnel(s.window.ctx, item.config.Identifier); err != nil {
 													log.Printf("stop tunnel err: %s", err.Error())
 												}
 											}

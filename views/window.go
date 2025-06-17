@@ -1,11 +1,13 @@
 package views
 
 import (
+	"context"
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
+	"github.com/gogf/gf/v2/os/gctx"
 )
 
 type Window struct {
@@ -13,6 +15,7 @@ type Window struct {
 	th     *material.Theme
 	ops    *op.Ops
 	gtx    layout.Context
+	ctx    context.Context
 	ui     *UI
 }
 
@@ -33,6 +36,7 @@ func NewWindow() *Window {
 		th:     th,
 		ops:    &op.Ops{},
 		ui:     &UI{},
+		ctx:    gctx.New(),
 	}
 
 	w.RegisterUI()

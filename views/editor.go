@@ -1,6 +1,7 @@
 package views
 
 import (
+	"context"
 	"fmt"
 	"gioui.org/layout"
 	"gioui.org/text"
@@ -337,7 +338,7 @@ func (e *Editor) Layout() layout.Dimensions {
 								Right:  50,
 							}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 								if e.saveButton.Clicked(gtx) {
-									e.OnSaveBtnClicked()
+									e.OnSaveBtnClicked(e.window.ctx)
 								}
 								btn := material.Button(th, &e.saveButton, "保存")
 								btn.Inset = layout.Inset{Top: 6, Bottom: 6, Left: 10, Right: 10}
@@ -354,7 +355,7 @@ func (e *Editor) Layout() layout.Dimensions {
 									Right:  50,
 								}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 									if e.deleteButton.Clicked(gtx) {
-										e.OnDelBtnClicked()
+										e.OnDelBtnClicked(e.window.ctx)
 									}
 									btn := material.Button(th, &e.deleteButton, "删除")
 									btn.Background = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
@@ -401,7 +402,7 @@ func (e *Input) Layout() layout.Dimensions {
 	)
 }
 
-func (e *Editor) OnSaveBtnClicked() {
+func (e *Editor) OnSaveBtnClicked(ctx context.Context) {
 	if err := e.validateForm(); err != nil {
 		log.Printf("form validation error: %s", err)
 		return
@@ -422,10 +423,10 @@ func (e *Editor) OnSaveBtnClicked() {
 	if e.IsEditMode() {
 		cf.FileName = e.fileName
 		cf.Identifier = e.identifier
-		err = cf.UpdateConfigFile()
+		err = cf.UpdateConfigFile(ctx)
 	} else {
 		cf.Identifier = fmt.Sprintf("%d", time.Now().UnixMicro())
-		err = cf.SaveConfigFile()
+		err = cf.SaveConfigFile(ctx)
 	}
 
 	if err != nil {
@@ -433,7 +434,7 @@ func (e *Editor) OnSaveBtnClicked() {
 		return
 	}
 
-	if err := e.window.ui.sidebar.LoadSidebarItems(); err != nil {
+	if err := e.window.ui.sidebar.LoadSidebarItems(ctx); err != nil {
 		log.Printf("load sidebar error: %s", err)
 		return
 	}
@@ -441,17 +442,17 @@ func (e *Editor) OnSaveBtnClicked() {
 	e.SwitchEditMode()
 }
 
-func (e *Editor) OnDelBtnClicked() {
+func (e *Editor) OnDelBtnClicked(ctx context.Context) {
 	cf := &service.ConfigFile{
 		FileName: e.fileName,
 	}
 
-	if err := cf.DeleteConfigFile(); err != nil {
+	if err := cf.DeleteConfigFile(ctx); err != nil {
 		log.Printf("delete config error: %s", err.Error())
 		return
 	}
 
-	if err := e.window.ui.sidebar.LoadSidebarItems(); err != nil {
+	if err := e.window.ui.sidebar.LoadSidebarItems(ctx); err != nil {
 		log.Printf("load sidebar error: %s", err)
 	}
 

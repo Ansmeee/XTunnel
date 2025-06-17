@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/frame/g"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"xtunnel/logger"
 )
 
 type TunnelStatus int
@@ -56,22 +58,23 @@ func NewTunnel(config *TunnelConfig) *Tunnel {
 	}
 }
 
-func (t *Tunnel) Start() error {
+func (t *Tunnel) Start(ctx context.Context) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if t.status != StatusStopped {
+		logger.Error(ctx, "tunnel already running or starting", g.Map{"identifier": t.identifier, "status": t.status})
 		return fmt.Errorf("[%s] tunnel already running or starting", t.identifier)
 	}
 
 	t.status = StatusStarting
-	log.Printf("[%s] tunnel starting...", t.identifier)
-	if err := t.connectSSH(); err != nil {
+	logger.Info(ctx, "tunnel starting", g.Map{"identifier": t.identifier})
+	if err := t.connectSSH(ctx); err != nil {
 		t.status = StatusStopped
 		return err
 	}
 
-	if err := t.listenNet(); err != nil {
+	if err := t.listenNet(ctx); err != nil {
 		t.status = StatusStopped
 		t.sshClient.Close()
 		return err
@@ -79,16 +82,22 @@ func (t *Tunnel) Start() error {
 
 	t.status = StatusRunning
 	t.startedAt = time.Now()
-	log.Printf("[%s] ssh tunnel established %s → %s via %s", t.identifier, t.config.LocalAddr, t.config.RemoteAddr, t.config.ServerAddr)
 
-	go t.handleSignals()
-	go t.runTunnel()
-	go t.monitorConnection()
+	logger.Info(ctx, "ssh tunnel established", g.Map{
+		"identifier": t.identifier,
+		"localAddr":  t.config.LocalAddr,
+		"remoteAddr": t.config.RemoteAddr,
+		"serverAddr": t.config.ServerAddr,
+	})
+
+	go t.handleSignals(ctx)
+	go t.runTunnel(ctx)
+	go t.monitorConnection(ctx)
 
 	return nil
 }
 
-func (t *Tunnel) Stop() {
+func (t *Tunnel) Stop(ctx context.Context) {
 	t.mu.Lock()
 
 	if t.status != StatusRunning {
@@ -96,21 +105,20 @@ func (t *Tunnel) Stop() {
 		return
 	}
 
+	logger.Info(ctx, "tunnel stopping", g.Map{"identifier": t.identifier})
 	t.status = StatusStopping
 	t.mu.Unlock()
-	log.Printf("[%s] tunnel stopping...", t.identifier)
-
 	t.cancel()
 
 	if t.listener != nil {
 		if err := t.listener.Close(); err != nil {
-			log.Printf("[%s] tunnel listener close error: %s", t.identifier, err.Error())
+			logger.Error(ctx, "tunnel listener close error", g.Map{"identifier": t.identifier, "err": err.Error()})
 		}
 	}
 
 	if t.sshClient != nil {
 		if err := t.sshClient.Close(); err != nil {
-			log.Printf("[%s] ssh client close error: %s", t.identifier, err.Error())
+			logger.Error(ctx, "ssh client close error", g.Map{"identifier": t.identifier, "err": err.Error()})
 			return
 		}
 	}
@@ -119,21 +127,22 @@ func (t *Tunnel) Stop() {
 	t.mu.Lock()
 	t.status = StatusStopped
 	t.mu.Unlock()
-	log.Printf("[%s] tunnel stopped", t.identifier)
+
+	logger.Info(ctx, "tunnel stopped", g.Map{"identifier": t.identifier})
 }
 
-func (t *Tunnel) runTunnel() {
+func (t *Tunnel) runTunnel(ctx context.Context) {
 	sem := make(chan struct{}, 10)
 	for {
 		select {
 		case <-t.ctx.Done():
-			log.Printf("[%s] tunnel listener stopping...", t.identifier)
+			logger.Info(ctx, "tunnel listener stopped", g.Map{"identifier": t.identifier})
 			return
 		default:
 			conn, err := t.listener.Accept()
 			if err != nil {
 				if !strings.Contains(err.Error(), "use of closed network connection") {
-					log.Printf("[%s] tunnel accept err: %s", t.identifier, err.Error())
+					logger.Error(ctx, "tunnel accept error", g.Map{"identifier": t.identifier, "err": err.Error()})
 				}
 				continue
 			}
@@ -159,7 +168,7 @@ func (t *Tunnel) runTunnel() {
 func (t *Tunnel) forward(ctx context.Context, localConn net.Conn) {
 	remoteConn, err := t.sshClient.Dial("tcp", t.config.RemoteAddr)
 	if err != nil {
-		log.Printf("[%s] remote addr dial error: %s", t.identifier, err.Error())
+		logger.Error(ctx, "remote addr dial error", g.Map{"identifier": t.identifier, "err": err.Error()})
 		return
 	}
 	defer remoteConn.Close()
@@ -171,9 +180,10 @@ func (t *Tunnel) forward(ctx context.Context, localConn net.Conn) {
 		defer wg.Done()
 		n, err := io.CopyBuffer(remoteConn, localConn, buf)
 		if err != nil {
-			log.Printf("[%s] local to remote server forwarding err: %s", t.identifier, err.Error())
+			logger.Error(ctx, "local to remote server forwarding err", g.Map{"identifier": t.identifier, "err": err.Error()})
+			return
 		}
-		log.Printf("[%s] local to remote server forwarding completed, transmit %d bytes", t.identifier, n)
+		logger.Info(ctx, "local to remote server forwarding completed", g.Map{"identifier": t.identifier, "transmit": n})
 	}()
 
 	wg.Add(1)
@@ -181,18 +191,23 @@ func (t *Tunnel) forward(ctx context.Context, localConn net.Conn) {
 		defer wg.Done()
 		n, err := io.CopyBuffer(localConn, remoteConn, buf)
 		if err != nil {
-			log.Printf("[%s] remote server to local forwarding err: %s", t.identifier, err.Error())
+			logger.Error(ctx, "remote server to local forwarding err", g.Map{"identifier": t.identifier, "err": err.Error()})
+			return
 		}
-		log.Printf("[%s] remote server to local forwarding completed, transmit %d bytes", t.identifier, n)
+		logger.Info(ctx, "local to remote server forwarding completed", g.Map{"identifier": t.identifier, "transmit": n})
 	}()
 
 	wg.Wait()
 }
 
-func (t *Tunnel) listenNet() error {
+func (t *Tunnel) listenNet(ctx context.Context) error {
 	listener, err := net.Listen("tcp", t.config.LocalAddr)
 	if err != nil {
-		log.Printf("[%s] failed to listen %s, err: %s", t.identifier, t.config.LocalAddr, err.Error())
+		logger.Error(ctx, "listen error", g.Map{
+			"identifier": t.identifier,
+			"localAddr":  t.config.LocalAddr,
+			"err":        err.Error(),
+		})
 		return err
 	}
 
@@ -200,7 +215,7 @@ func (t *Tunnel) listenNet() error {
 	return nil
 }
 
-func (t *Tunnel) connectSSH() error {
+func (t *Tunnel) connectSSH(ctx context.Context) error {
 	config := &ssh.ClientConfig{
 		User:            t.config.Username,
 		Auth:            []ssh.AuthMethod{ssh.Password(t.config.Password)},
@@ -218,14 +233,14 @@ func (t *Tunnel) connectSSH() error {
 			return nil
 		}
 
-		log.Printf("[%s] ssh connect err: %s, [%d/3]rtetring...", t.identifier, err.Error(), i)
+		logger.Error(ctx, "ssh connect error", g.Map{"identifier": t.identifier, "err": err.Error(), "retry": i})
 		time.Sleep(1 * time.Second)
 	}
 
 	return fmt.Errorf("[%s] ssh connect after 3 attempts", t.identifier)
 }
 
-func (t *Tunnel) monitorConnection() {
+func (t *Tunnel) monitorConnection(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
@@ -234,8 +249,8 @@ func (t *Tunnel) monitorConnection() {
 		case <-ticker.C:
 			_, _, err := t.sshClient.SendRequest(fmt.Sprintf("http://%s", t.config.LocalAddr), true, nil)
 			if err != nil {
-				log.Printf("[%s] keepalive err: %s", t.identifier, err.Error())
-				t.Stop()
+				logger.Error(ctx, "keepalive err", g.Map{"identifier": t.identifier, "err": err.Error()})
+				t.Stop(ctx)
 				return
 			}
 		case <-t.ctx.Done():
@@ -244,7 +259,7 @@ func (t *Tunnel) monitorConnection() {
 	}
 }
 
-func (t *Tunnel) handleSignals() {
+func (t *Tunnel) handleSignals(ctx context.Context) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(quit)
@@ -252,7 +267,7 @@ func (t *Tunnel) handleSignals() {
 	select {
 	case sig := <-quit:
 		log.Printf("[%s] received signal: %v", t.identifier, sig)
-		t.Stop()
+		t.Stop(ctx)
 	case <-t.ctx.Done():
 	}
 }

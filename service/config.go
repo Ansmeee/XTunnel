@@ -1,11 +1,13 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/gogf/gf/v2/frame/g"
 	"os"
 	"time"
+	"xtunnel/logger"
 )
 
 type ConfigFile struct {
@@ -22,39 +24,39 @@ type ConfigFile struct {
 
 var configPath = "config"
 
-func (c *ConfigFile) DeleteConfigFile() error {
+func (c *ConfigFile) DeleteConfigFile(ctx context.Context) error {
 	fileName := c.FileName
 	if fileName == "" {
 		return fmt.Errorf("invalid config file")
 	}
 
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		log.Printf("[%s] config file not exists", fileName)
+		logger.Error(ctx, "config file not exists", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file not exists")
 	}
 
 	if err := os.Remove(fileName); err != nil {
-		log.Printf("[%s] config file delete error: %s", fileName, err.Error())
+		logger.Error(ctx, "config file delete error", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file delete error")
 	}
 
 	return nil
 }
 
-func (c *ConfigFile) UpdateConfigFile() error {
+func (c *ConfigFile) UpdateConfigFile(ctx context.Context) error {
 	fileName := c.FileName
 	if fileName == "" {
 		return fmt.Errorf("invalid config file")
 	}
 
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		log.Printf("[%s] config file not exists", fileName)
+		logger.Error(ctx, "config file not exists", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file not exists")
 	}
 
 	file, err := os.OpenFile(fileName, os.O_WRONLY, 0644)
 	if err != nil {
-		log.Printf("[%s] config file open error: %s", fileName, err.Error())
+		logger.Error(ctx, "config file open error", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file open error")
 	}
 	defer file.Close()
@@ -66,16 +68,16 @@ func (c *ConfigFile) UpdateConfigFile() error {
 
 	_, err = file.Write(newContent)
 	if err != nil {
-		log.Printf("[%s] config file write error: %s", fileName, err.Error())
+		logger.Error(ctx, "config file write error", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file write error")
 	}
 
-	log.Printf("[%s] config file updated", fileName)
+	logger.Info(ctx, "config file updated", g.Map{"filename": fileName})
 	return nil
 }
 
-func (c *ConfigFile) SaveConfigFile() error {
-	if err := c.EnsureDir(); err != nil {
+func (c *ConfigFile) SaveConfigFile(ctx context.Context) error {
+	if err := c.EnsureDir(ctx); err != nil {
 		return err
 	}
 
@@ -87,29 +89,29 @@ func (c *ConfigFile) SaveConfigFile() error {
 
 	fileContent, err := json.Marshal(c)
 	if err != nil {
-		log.Printf("[%s] config file marshal error: %s", fileName, err.Error())
+		logger.Error(ctx, "config file marshal error", g.Map{"filename": fileName, "error": err.Error()})
 		return err
 	}
 
 	if err := os.WriteFile(fileName, fileContent, 0644); err != nil {
-		log.Printf("[%s] config file write error: %s", fileName, err.Error())
+		logger.Error(ctx, "config file write error", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file write error")
 	}
 
-	log.Printf("[%s] config file saved", fileName)
+	logger.Info(ctx, "config file saved", g.Map{"filename": fileName})
 	return nil
 }
 
-func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
+func (c *ConfigFile) LoadConfigFile(ctx context.Context) ([]*ConfigFile, error) {
 	configs := make([]*ConfigFile, 0)
 
-	if err := c.EnsureDir(); err != nil {
+	if err := c.EnsureDir(ctx); err != nil {
 		return configs, nil
 	}
 
 	files, err := os.ReadDir(configPath)
 	if err != nil {
-		log.Printf("load config files error: %s", err.Error())
+		logger.Error(ctx, "load config files error", g.Map{"config_path": configPath, "error": err.Error()})
 		return nil, fmt.Errorf("load config files error")
 	}
 
@@ -117,13 +119,13 @@ func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
 		filePath := configPath + "/" + file.Name()
 		config, err := os.ReadFile(filePath)
 		if err != nil {
-			log.Printf("[%s] read config file error: %s", file.Name(), err.Error())
+			logger.Error(ctx, "read config file error", g.Map{"file_path": filePath, "error": err.Error()})
 			continue
 		}
 
 		conf := &ConfigFile{}
 		if err = json.Unmarshal(config, conf); err != nil {
-			log.Printf("[%s] unmarshal config file error: %s", file.Name(), err.Error())
+			logger.Error(ctx, "unmarshal config file error", g.Map{"file_name": file.Name(), "error": err.Error()})
 			continue
 		}
 		configs = append(configs, conf)
@@ -132,17 +134,17 @@ func (c *ConfigFile) LoadConfigFile() ([]*ConfigFile, error) {
 	return configs, nil
 }
 
-func (c *ConfigFile) EnsureDir() error {
+func (c *ConfigFile) EnsureDir(ctx context.Context) error {
 	if _, err := os.Stat(configPath); err != nil {
 		if os.IsNotExist(err) {
 			if err := os.Mkdir(configPath, 0644); err != nil {
-				log.Printf("[%s] config file mkdir error: %s", configPath, err.Error())
+				logger.Error(ctx, "config file mkdir error", g.Map{"config_path": configPath, "error": err.Error()})
 				return fmt.Errorf("config file mkdir error")
 			}
 			return nil
 		}
 
-		fmt.Printf("[%s] config dir not ready", configPath)
+		logger.Error(ctx, "config dir is not ready", g.Map{"config_path": configPath, "error": err.Error()})
 		return fmt.Errorf("config dir not ready")
 	}
 
