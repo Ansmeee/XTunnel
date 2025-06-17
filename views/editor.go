@@ -10,7 +10,7 @@ import (
 	"image"
 	"image/color"
 	"log"
-	"strings"
+	"time"
 	"xtunnel/service"
 )
 
@@ -20,6 +20,7 @@ const ModeEdit = 2
 type Editor struct {
 	window          *Window
 	mode            int
+	identifier      string
 	fileName        string
 	originPassword  string
 	passwordChanged bool
@@ -317,6 +318,7 @@ func (e *Editor) Layout() layout.Dimensions {
 					width:       gtx.Constraints.Max.X,
 					borderColor: color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xFF},
 				}
+
 				if e.passwordInputWidget.ValidErr != "" {
 					e.passwordInputWidget.Input.borderColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
 					e.passwordInputWidget.Input.hintColor = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
@@ -404,11 +406,6 @@ func (e *Editor) OnSaveBtnClicked() {
 		return
 	}
 
-	password := e.originPassword
-	if e.passwordChanged {
-		password = e.passwordInput.Text()
-	}
-
 	cf := &service.ConfigFile{
 		ConfigName: e.configNameInput.Text(),
 		RemoteIP:   e.remoteIpInput.Text(),
@@ -416,15 +413,17 @@ func (e *Editor) OnSaveBtnClicked() {
 		ServerIP:   e.serverIpInput.Text(),
 		ServerPort: e.serverPortInput.Text(),
 		UserName:   e.usernameInput.Text(),
-		Password:   password,
+		Password:   e.passwordInput.Text(),
 	}
 
 	var err error
 
 	if e.IsEditMode() {
 		cf.FileName = e.fileName
+		cf.Identifier = e.identifier
 		err = cf.UpdateConfigFile()
 	} else {
+		cf.Identifier = fmt.Sprintf("%d", time.Now().UnixMicro())
 		err = cf.SaveConfigFile()
 	}
 
@@ -465,15 +464,6 @@ func (e *Editor) validateForm() error {
 	if e.configNameInput.Text() == "" {
 		e.configNameInputWidget.ValidErr = "config name is empty"
 		hasErr = true
-	}
-
-	for _, item := range e.window.ui.sidebar.items {
-		if item.config.ConfigName == e.configNameInput.Text() {
-			e.configNameInput.SetText("")
-			e.configNameInputWidget.ValidErr = "config name cannot be duplicated"
-			hasErr = true
-			break
-		}
 	}
 
 	e.remoteIpInputWidget.ValidErr = ""
@@ -539,6 +529,7 @@ func (e *Editor) setCurItem() {
 		}
 		config = curItem.config
 		e.fileName = config.FileName
+		e.identifier = config.Identifier
 	}
 
 	e.configNameInput.SetText(config.ConfigName)
@@ -548,11 +539,6 @@ func (e *Editor) setCurItem() {
 	e.serverPortInput.SetText(config.ServerPort)
 	e.usernameInput.SetText(config.UserName)
 	e.passwordInput.SetText(config.Password)
-
-	if config.Password != "" {
-		e.originPassword = config.Password
-		e.passwordInput.SetText(strings.Repeat("*", 10))
-	}
 }
 
 func (e *Editor) IsCreateMode() bool {

@@ -41,7 +41,7 @@ func (s *Sidebar) LoadSidebarItems() error {
 	items := make([]*SidebarItem, len(files))
 	for i, file := range files {
 		_, err := tunnelManager.AddTunnel(
-			file.ConfigName,
+			file.Identifier,
 			&service.TunnelConfig{
 				Username:   file.UserName,
 				Password:   file.Password,
@@ -157,11 +157,11 @@ func (s *Sidebar) Layout() layout.Dimensions {
 									layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 										if item.switchWidget.Update(gtx) {
 											if item.switchWidget.Value == true {
-												if err := s.tunnelManager.StartTunnel(item.config.ConfigName); err != nil {
+												if err := s.tunnelManager.StartTunnel(item.config.Identifier); err != nil {
 													log.Printf("start tunnel err: %s", err.Error())
 												}
 											} else {
-												if err := s.tunnelManager.StopTunnel(item.config.ConfigName); err != nil {
+												if err := s.tunnelManager.StopTunnel(item.config.Identifier); err != nil {
 													log.Printf("stop tunnel err: %s", err.Error())
 												}
 											}

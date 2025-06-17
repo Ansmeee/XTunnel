@@ -9,6 +9,7 @@ import (
 )
 
 type ConfigFile struct {
+	Identifier string `json:"identifier"`
 	FileName   string `json:"file_name"`
 	ConfigName string `json:"config_name"`
 	RemoteIP   string `json:"remote_ip"`
