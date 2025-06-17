@@ -4,10 +4,8 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
-	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"image/color"
 )
 
 type Window struct {
@@ -56,7 +54,6 @@ func (w *Window) Run() {
 				w.gtx = app.NewContext(w.ops, e)
 				layout.Stack{}.Layout(w.gtx,
 					layout.Expanded(func(gtx layout.Context) layout.Dimensions {
-						paint.Fill(gtx.Ops, color.NRGBA{R: 240, G: 240, B: 240, A: 255})
 						return layout.Dimensions{Size: gtx.Constraints.Min}
 					}),
 					layout.Stacked(func(gtx layout.Context) layout.Dimensions {

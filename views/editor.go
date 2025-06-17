@@ -332,7 +332,7 @@ func (e *Editor) Layout() layout.Dimensions {
 									e.OnSaveBtnClicked()
 								}
 								btn := material.Button(th, &e.saveButton, "保存")
-								btn.Inset = layout.Inset{Top: 10, Bottom: 10, Left: 20, Right: 20}
+								btn.Inset = layout.Inset{Top: 6, Bottom: 6, Left: 10, Right: 10}
 								return btn.Layout(gtx)
 							})
 						}),
@@ -349,7 +349,7 @@ func (e *Editor) Layout() layout.Dimensions {
 									}
 									btn := material.Button(th, &e.deleteButton, "删除")
 									btn.Background = color.NRGBA{R: 255, G: 0, B: 0, A: 255}
-									btn.Inset = layout.Inset{Top: 8, Bottom: 8, Left: 20, Right: 20}
+									btn.Inset = layout.Inset{Top: 4, Bottom: 4, Left: 10, Right: 10}
 									return btn.Layout(gtx)
 								})
 							}
@@ -525,8 +525,12 @@ func (e *Editor) setCurItem() {
 	e.serverIpInput.SetText(config.ServerIP)
 	e.serverPortInput.SetText(config.ServerPort)
 	e.usernameInput.SetText(config.UserName)
-	e.originPassword = config.Password
-	e.passwordInput.SetText(strings.Repeat("*", 10))
+	e.passwordInput.SetText(config.Password)
+
+	if config.Password != "" {
+		e.originPassword = config.Password
+		e.passwordInput.SetText(strings.Repeat("*", 10))
+	}
 }
 
 func (e *Editor) IsCreateMode() bool {

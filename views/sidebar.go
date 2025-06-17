@@ -100,12 +100,19 @@ func (s *Sidebar) Layout() layout.Dimensions {
 						return material.Body1(th, "配置列表").Layout(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						if s.createBtn.Clicked(gtx) {
-							s.SelectedItem = nil
-							s.window.ui.editor.SwitchCreateMode()
-						}
-						return s.createBtn.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-							return material.Body1(th, "新增").Layout(gtx)
+						return layout.Inset{
+							Top:    0,
+							Bottom: 0,
+							Left:   0,
+							Right:  10,
+						}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							if s.createBtn.Clicked(gtx) {
+								s.SelectedItem = nil
+								s.window.ui.editor.SwitchCreateMode()
+							}
+							btn := material.Button(th, s.createBtn, "新增")
+							btn.Inset = layout.Inset{Top: 2, Bottom: 2, Left: 10, Right: 10}
+							return btn.Layout(gtx)
 						})
 					}),
 				)
@@ -117,7 +124,7 @@ func (s *Sidebar) Layout() layout.Dimensions {
 				return material.List(th, s.listState).Layout(gtx, len(s.items), func(gtx layout.Context, index int) layout.Dimensions {
 					item := s.items[index]
 
-					bg := color.NRGBA{R: 240, G: 240, B: 240, A: 255}
+					bg := color.NRGBA{}
 					if item.clickWidget.Clicked(gtx) {
 						s.SelectedItem = item
 						s.window.ui.editor.SwitchEditMode()
@@ -125,10 +132,10 @@ func (s *Sidebar) Layout() layout.Dimensions {
 
 					if s.SelectedItem != nil {
 						if s.SelectedItem.config.ConfigName == item.config.ConfigName {
-							bg = color.NRGBA{R: 192, G: 192, B: 192, A: 255}
+							bg = color.NRGBA{R: 240, G: 240, B: 240, A: 255}
 						}
 
-						if s.SelectedItem.config.ConfigName != item.config.ConfigName && item.clickWidget.Hovered() {
+						if item.clickWidget.Hovered() {
 							bg = color.NRGBA{R: 220, G: 220, B: 220, A: 255}
 						}
 					}
@@ -160,7 +167,9 @@ func (s *Sidebar) Layout() layout.Dimensions {
 											}
 										}
 										return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-											return material.Switch(th, &item.switchWidget, "").Layout(gtx)
+											sw := material.Switch(th, &item.switchWidget, "")
+											sw.Color.Enabled = color.NRGBA{R: 0, G: 128, B: 0, A: 255}
+											return sw.Layout(gtx)
 										})
 									}),
 								)
