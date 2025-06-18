@@ -50,19 +50,6 @@ type InputWidget struct {
 	ValidErr string
 }
 
-type Input struct {
-	gtx         layout.Context
-	th          *material.Theme
-	e           *Editor
-	label       string
-	labelWidth  int
-	hint        string
-	hintColor   color.NRGBA
-	editor      *widget.Editor
-	width       int
-	borderColor color.NRGBA
-}
-
 func NewEditor(w *Window) *Editor {
 	editor := &Editor{
 		window:          w,
@@ -120,7 +107,7 @@ func (e *Editor) Layout() layout.Dimensions {
 	return layout.Inset{Left: unit.Dp(10), Right: unit.Dp(20)}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				t := material.Subtitle1(th, "隧道配置")
+				t := material.Body1(th, "隧道配置")
 				t.Alignment = text.Middle
 				return t.Layout(gtx)
 			}),
@@ -372,29 +359,42 @@ func (e *Editor) Layout() layout.Dimensions {
 	})
 }
 
-func (e *Input) Layout() layout.Dimensions {
-	gtx := e.gtx
-	th := e.th
+type Input struct {
+	gtx         layout.Context
+	th          *material.Theme
+	e           *Editor
+	label       string
+	labelWidth  int
+	hint        string
+	hintColor   color.NRGBA
+	editor      *widget.Editor
+	width       int
+	borderColor color.NRGBA
+}
 
-	gtx.Constraints = layout.Exact(image.Pt(e.width, 30))
+func (i *Input) Layout() layout.Dimensions {
+	gtx := i.gtx
+	th := i.th
+
+	gtx.Constraints = layout.Exact(image.Pt(i.width, 30))
 	return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Start}.Layout(gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			gtx.Constraints = layout.Exact(image.Pt(e.labelWidth, 30))
+			gtx.Constraints = layout.Exact(image.Pt(i.labelWidth, 30))
 			return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-				return material.Body1(th, e.label).Layout(gtx)
+				return material.Body1(th, i.label).Layout(gtx)
 			})
 		}),
 		layout.Rigid(layout.Spacer{Width: unit.Dp(10)}.Layout),
 		layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
 			border := widget.Border{
-				Color:        e.borderColor,
+				Color:        i.borderColor,
 				Width:        unit.Dp(1),
 				CornerRadius: unit.Dp(4),
 			}
 			return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 				return layout.UniformInset(5).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-					editor := material.Editor(th, e.editor, e.hint)
-					editor.HintColor = e.hintColor
+					editor := material.Editor(th, i.editor, i.hint)
+					editor.HintColor = i.hintColor
 					return editor.Layout(gtx)
 				})
 			})
@@ -434,7 +434,7 @@ func (e *Editor) OnSaveBtnClicked(ctx context.Context) {
 		return
 	}
 
-	if err := e.window.ui.sidebar.LoadSidebarItems(ctx); err != nil {
+	if err = e.window.ui.sidebar.LoadSidebarItems(ctx); err != nil {
 		log.Printf("load sidebar error: %s", err)
 		return
 	}

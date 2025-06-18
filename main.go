@@ -24,7 +24,6 @@ func main() {
 
 	select {
 	case <-quit:
-		win.Destroy(ctx)
 	case <-ctx.Done():
 		win.Destroy(ctx)
 	}
