@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gogf/gf/v2/frame/g"
 	"os"
+	"path/filepath"
 	"time"
 	"xtunnel/logger"
 )
@@ -22,20 +23,24 @@ type ConfigFile struct {
 	Password   string `json:"password"`
 }
 
-var configPath = "config"
-
 func (c *ConfigFile) DeleteConfigFile(ctx context.Context) error {
 	fileName := c.FileName
 	if fileName == "" {
 		return fmt.Errorf("invalid config file")
 	}
 
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+	configPath, err := c.EnsureDir(ctx)
+	if err != nil {
+		return fmt.Errorf("config file ensure dir error: %w", err)
+	}
+
+	path := filepath.Join(configPath, fileName)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
 		logger.Error(ctx, "config file not exists", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file not exists")
 	}
 
-	if err := os.Remove(fileName); err != nil {
+	if err := os.Remove(path); err != nil {
 		logger.Error(ctx, "config file delete error", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file delete error")
 	}
@@ -49,12 +54,18 @@ func (c *ConfigFile) UpdateConfigFile(ctx context.Context) error {
 		return fmt.Errorf("invalid config file")
 	}
 
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+	configPath, err := c.EnsureDir(ctx)
+	if err != nil {
+		return fmt.Errorf("config file ensure dir error: %w", err)
+	}
+
+	path := filepath.Join(configPath, fileName)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
 		logger.Error(ctx, "config file not exists", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file not exists")
 	}
 
-	file, err := os.OpenFile(fileName, os.O_WRONLY, 0644)
+	file, err := os.OpenFile(path, os.O_WRONLY, 0644)
 	if err != nil {
 		logger.Error(ctx, "config file open error", g.Map{"filename": fileName, "error": err.Error()})
 		return fmt.Errorf("config file open error")
@@ -77,11 +88,12 @@ func (c *ConfigFile) UpdateConfigFile(ctx context.Context) error {
 }
 
 func (c *ConfigFile) SaveConfigFile(ctx context.Context) error {
-	if err := c.EnsureDir(ctx); err != nil {
+	configPath, err := c.EnsureDir(ctx)
+	if err != nil {
 		return err
 	}
 
-	fileName := fmt.Sprintf("%s/%d.json", configPath, time.Now().UnixMicro())
+	fileName := filepath.Join(configPath, fmt.Sprintf("%d.json", time.Now().UnixMicro()))
 	c.FileName = fileName
 	if c.ConfigName == "" {
 		c.ConfigName = fmt.Sprintf("%s:%s", c.RemoteIP, c.RemotePort)
@@ -104,8 +116,8 @@ func (c *ConfigFile) SaveConfigFile(ctx context.Context) error {
 
 func (c *ConfigFile) LoadConfigFile(ctx context.Context) ([]*ConfigFile, error) {
 	configs := make([]*ConfigFile, 0)
-
-	if err := c.EnsureDir(ctx); err != nil {
+	configPath, err := c.EnsureDir(ctx)
+	if err != nil {
 		return configs, nil
 	}
 
@@ -116,10 +128,10 @@ func (c *ConfigFile) LoadConfigFile(ctx context.Context) ([]*ConfigFile, error) 
 	}
 
 	for _, file := range files {
-		filePath := configPath + "/" + file.Name()
-		config, err := os.ReadFile(filePath)
+		path := filepath.Join(configPath, file.Name())
+		config, err := os.ReadFile(path)
 		if err != nil {
-			logger.Error(ctx, "read config file error", g.Map{"file_path": filePath, "error": err.Error()})
+			logger.Error(ctx, "read config file error", g.Map{"file_path": path, "error": err.Error()})
 			continue
 		}
 
@@ -134,19 +146,26 @@ func (c *ConfigFile) LoadConfigFile(ctx context.Context) ([]*ConfigFile, error) 
 	return configs, nil
 }
 
-func (c *ConfigFile) EnsureDir(ctx context.Context) error {
+func (c *ConfigFile) EnsureDir(ctx context.Context) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		logger.Error(ctx, "cannot find home dir", g.Map{"error": err.Error()})
+		return "", fmt.Errorf("cannot find home dir")
+	}
+
+	configPath := filepath.Join(homeDir, "XTunnel", ".config")
 	if _, err := os.Stat(configPath); err != nil {
 		if os.IsNotExist(err) {
-			if err := os.Mkdir(configPath, 0644); err != nil {
+			if err := os.MkdirAll(configPath, 0644); err != nil {
 				logger.Error(ctx, "config file mkdir error", g.Map{"config_path": configPath, "error": err.Error()})
-				return fmt.Errorf("config file mkdir error")
+				return "", fmt.Errorf("config file mkdir error")
 			}
-			return nil
+			return configPath, nil
 		}
 
 		logger.Error(ctx, "config dir is not ready", g.Map{"config_path": configPath, "error": err.Error()})
-		return fmt.Errorf("config dir not ready")
+		return "", fmt.Errorf("config dir not ready")
 	}
 
-	return nil
+	return configPath, nil
 }

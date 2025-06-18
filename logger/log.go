@@ -6,6 +6,8 @@ import (
 	"github.com/gogf/gf/v2/net/gtrace"
 	"github.com/gogf/gf/v2/os/glog"
 	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -14,8 +16,13 @@ var Logger *glog.Logger
 
 func Init() {
 	logger := glog.New()
-	err := logger.SetConfigWithMap(g.Map{
-		"path":               "logs",
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("cannot find home dir")
+	}
+
+	if err = logger.SetConfigWithMap(g.Map{
+		"path":               filepath.Join(homeDir, "XTunnel", "logs"),
 		"level":              "all",
 		"timeFormat":         "2006-01-02 15:04:05",
 		"stStatus":           0,
@@ -25,8 +32,7 @@ func Init() {
 		"rotateBackupLimit":  50,     // 日志文件最大备份数量
 		"rotateBackupExpire": "3d",   // 日志文件备份最大有效期
 		"StdoutPrint":        true,
-	})
-	if err != nil {
+	}); err != nil {
 		log.Fatalf("InitLog err: %s", err.Error())
 	}
 
