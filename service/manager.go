@@ -74,6 +74,12 @@ func (tm *TunnelManager) StopTunnel(ctx context.Context, identifier string) erro
 	return nil
 }
 
+func (tm *TunnelManager) StopAll(ctx context.Context) {
+	for _, tunnel := range tm.tunnels {
+		tunnel.Stop(ctx)
+	}
+}
+
 func (tm *TunnelManager) StatusTunnel(ctx context.Context, identifier string) (TunnelStatus, error) {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()

@@ -6,13 +6,9 @@ import (
 	"github.com/gogf/gf/v2/frame/g"
 	"golang.org/x/crypto/ssh"
 	"io"
-	"log"
 	"net"
-	"os"
-	"os/signal"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 	"xtunnel/logger"
 )
@@ -90,9 +86,8 @@ func (t *Tunnel) Start(ctx context.Context) error {
 		"serverAddr": t.config.ServerAddr,
 	})
 
-	go t.handleSignals(ctx)
 	go t.runTunnel(ctx)
-	go t.monitorConnection(ctx)
+	//go t.monitorConnection(ctx)
 
 	return nil
 }
@@ -132,11 +127,10 @@ func (t *Tunnel) Stop(ctx context.Context) {
 }
 
 func (t *Tunnel) runTunnel(ctx context.Context) {
-	sem := make(chan struct{}, 10)
+	sem := make(chan struct{}, 20)
 	for {
 		select {
 		case <-t.ctx.Done():
-			logger.Info(ctx, "tunnel listener stopped", g.Map{"identifier": t.identifier})
 			return
 		default:
 			conn, err := t.listener.Accept()
@@ -256,18 +250,5 @@ func (t *Tunnel) monitorConnection(ctx context.Context) {
 		case <-t.ctx.Done():
 			return
 		}
-	}
-}
-
-func (t *Tunnel) handleSignals(ctx context.Context) {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	defer signal.Stop(quit)
-
-	select {
-	case sig := <-quit:
-		log.Printf("[%s] received signal: %v", t.identifier, sig)
-		t.Stop(ctx)
-	case <-t.ctx.Done():
 	}
 }

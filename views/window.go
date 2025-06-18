@@ -7,7 +7,6 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"github.com/gogf/gf/v2/os/gctx"
 )
 
 type Window struct {
@@ -16,6 +15,7 @@ type Window struct {
 	ops    *op.Ops
 	gtx    layout.Context
 	ctx    context.Context
+	cancel context.CancelFunc
 	ui     *UI
 }
 
@@ -24,7 +24,7 @@ type UI struct {
 	editor  *Editor
 }
 
-func NewWindow() *Window {
+func NewWindow(ctx context.Context, cancel context.CancelFunc) *Window {
 	window := new(app.Window)
 	window.Option(app.Title("XTunnel"))
 	window.Option(app.MaxSize(unit.Dp(900), unit.Dp(500)))
@@ -36,7 +36,8 @@ func NewWindow() *Window {
 		th:     th,
 		ops:    &op.Ops{},
 		ui:     &UI{},
-		ctx:    gctx.New(),
+		ctx:    ctx,
+		cancel: cancel,
 	}
 
 	w.RegisterUI()
@@ -53,6 +54,7 @@ func (w *Window) Run() {
 		for {
 			switch e := w.window.Event().(type) {
 			case app.DestroyEvent:
+				w.cancel()
 				return
 			case app.FrameEvent:
 				w.gtx = app.NewContext(w.ops, e)
@@ -78,4 +80,8 @@ func (w *Window) Run() {
 		}
 	}()
 	app.Main()
+}
+
+func (w *Window) Destroy(ctx context.Context) {
+	w.ui.sidebar.tunnelManager.StopAll(ctx)
 }

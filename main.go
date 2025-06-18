@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,11 +12,20 @@ import (
 func main() {
 	logger.Init()
 
-	views.NewWindow().Run()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	win := views.NewWindow(ctx, cancel)
+	go win.Run()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(quit)
-	
-	<-quit
+
+	select {
+	case <-quit:
+		win.Destroy(ctx)
+	case <-ctx.Done():
+		win.Destroy(ctx)
+	}
 }
